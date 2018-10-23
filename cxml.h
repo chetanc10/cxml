@@ -6,60 +6,35 @@
 #include <string.h>
 #include <errno.h>
 
-/* define as 1 if debug prints are needed in xml_encoder.c */
-#define CX_ENC_DBG_EN 0
-/* define as 1 if debug prints are needed in xml_decoder.c */
-#define CX_DEC_DBG_EN 0
-
-/* if error prints not needed, define as 0 */
-#define CX_ERR_PRINT_ALLOWED 1
-
-#if CX_ERR_PRINT_ALLOWED
-#define ___cx_pr_err(err) printf (err" @ %s +%u\r\n", __func__, __LINE__)
-#else
-#define ___cx_pr_err(...)
-#endif
-
-#define _cx_lassert(failed, errCode, err) \
-	do { \
-		if(failed) { \
-			___cx_pr_err (err); xStatus = errCode; goto CX_ERR; \
-		} \
-	} while(0)
-
-#define _cx_func_lassert(function, err) \
-	_cx_lassert ((CX_SUCCESS != (xStatus = function)), xStatus, err)
-
-#define _cx_null_lassert(ptr) \
-	_cx_lassert ((NULL == ptr), CX_ERR_ALLOC, "Null Buffer: "#ptr)
-
-#define XML_INSTR_STR       "xml version=\"1.0\""
-
-/*define CX_USING_xxx as 1 if the feature xxx should be included*/
-#define CX_USING_COMMENTS 0 
-#define CX_USING_CDATA    1
-#define CX_USING_INSTR    1
-#define CX_USING_TAG_ATTR 0
-
-/*can be removed as required.
- *see func addNodeToTree from xml_encoder.c*/
-#define STRICT 1
+#include "cxml_cfg.h"
 
 #pragma pack(1)
 
-/*Modifying this requires modifying enum for data types - cxa_type_t;
+/*Modifying cx_def_fmts and cx_def_sizes requires modifying enum for data types - cxattr_type_t;
  * ensure proper format specifiers while encoding different data in xml*/
 #define _cx_def_fmts_array(arr) \
-	char arr[CXA_MAX][4] = { \
-		"%c",    \
-		"%s",    \
-		"%u",    \
-		"%d",    \
-		"%hu",   \
-		"%hd",   \
-		"%u",    \
-		"%d",    \
-		"%f"     \
+	char arr[CXATTR_MAX][4] = { \
+		"%s",                   \
+		"%c",                   \
+		"%u",                   \
+		"%d",                   \
+		"%hu",                  \
+		"%hd",                  \
+		"%u",                   \
+		"%d",                   \
+		"%f"                    \
+	};
+#define _cx_def_size_array(arr) \
+	size_t arr[CXATTR_MAX] = {  \
+		0,                      \
+		sizeof (char),          \
+		sizeof (uint8_t),       \
+		sizeof (int8_t),        \
+		sizeof (uint16_t),      \
+		sizeof (int16_t),       \
+		sizeof (uint32_t),      \
+		sizeof (int32_t),       \
+		sizeof (float),         \
 	};
 
 #define NAME2STR(x) (#x)
@@ -74,7 +49,7 @@
  *           < 0 - for different failure conditions
  */
 #define _cx_calloc(buf, nBytes) \
-	({ buf = calloc(1, nBytes); -errno;})
+	({ buf = calloc (1, nBytes); -errno;})
 
 #define _cx_free(buf) \
 	do { if (buf) free (buf); } while (0)
@@ -90,12 +65,12 @@
  * @return : NULL - Failure or for NULL src or 0 sized src
  *           < 0 - for different failure conditions
  */
-static inline char *_cx_strndup(char *src, size_t maxLen, char *dName)
+static inline char *_cx_strndup (char *src, size_t maxLen, char *dName)
 {
 	char *dest = NULL;
 	size_t dLen, sLen;
 
-	if(!src || !(sLen = strlen (src))) {
+	if (!src || !(sLen = strlen (src))) {
 		return NULL;
 	}
 
@@ -104,7 +79,7 @@ static inline char *_cx_strndup(char *src, size_t maxLen, char *dName)
 	_cx_calloc (dest, dLen + 1); /*+1 for NULL char to end-string*/
 
 	if (dest)
-		strncpy(dest, src, dLen);
+		strncpy (dest, src, dLen);
 	else
 		printf ("%s: Allocating %s: %s\n", __func__, dName, strerror (errno));
 }

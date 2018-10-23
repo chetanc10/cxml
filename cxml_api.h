@@ -5,26 +5,24 @@
 #include <stdint.h>
 #include <errno.h>
 
-/* This file gives the interface to use cxml encoder/decoder
- * Just don't worry about symbol with '_' as first character */
+#include "cxml_cfg.h"
 
-/*xml packet size limits*/
-#define MAX_TX_XML_PKT_SIZE 2048
-#define MAX_RX_XML_PKT_SIZE 3096
+/* This file gives the application interface to use cxml encoder/decoder
+ * Just don't worry about symbol with '_' as first character */
 
 #pragma pack(1)
 
 typedef union attrValue_union {
-    uint32_t  xVal; /*to refer all variables here in generic*/
-    uint32_t  n_u32;
-    int32_t   n_i32;
-    uint16_t  n_u16;
-    int16_t   n_i16;
-    int8_t    n_i8;
-    uint8_t   n_u8;
-    float     f;
     char      *str;
     char      ch;
+    int8_t    n_i8;
+    uint8_t   n_u8;
+    uint16_t  n_u16;
+    int16_t   n_i16;
+    uint32_t  n_u32;
+    int32_t   n_i32;
+    float     f;
+    uint32_t  xVal; /*to refer all variables here in generic*/
 } cxa_value_u;
 
 typedef enum {
@@ -52,24 +50,28 @@ typedef enum {
 } cxn_type_t;
 
 typedef enum {
-    CXA_CHAR,
-    CXA_STR,
-    CXA_UI8,
-    CXA_SI8,
-    CXA_UI16,
-    CXA_SI16,
-    CXA_UI32,
-    CXA_SI32,
-    CXA_FLOAT,
-    CXA_MAX,
-} cxa_type_t;
+	/* Is the order changes here, take care of doing
+	 * corresponding changes in IS_INVALID_ATTR_TYPE() */
+    CXATTR_STR,
+    CXATTR_CHAR,
+    CXATTR_UI8,
+    CXATTR_SI8,
+    CXATTR_UI16,
+    CXATTR_SI16,
+    CXATTR_UI32,
+    CXATTR_SI32,
+    CXATTR_FLOAT,
+    CXATTR_MAX,
+} cxattr_type_t;
+#define IS_INVALID_ATTR_TYPE(type) \
+	((type < CXATTR_STR) || (type > CXATTR_FLOAT))
 
 typedef enum {
-    CX_ADD_MINTYPE,
-    CX_ADD_AS_CHILD,
-    CX_ADD_AS_NEXT,
-    CX_ADD_AS_FIRST,
-    CX_ADD_MAXTYPE,
+    CXADD_MINTYPE,
+    CXADD_CHILD,
+    CXADD_NEXT,
+    CXADD_FIRST,
+    CXADD_MAXTYPE,
 } cx_addtype_t;
 
 typedef struct cxn_addr_s {
@@ -84,7 +86,7 @@ typedef struct cx_node_s {
     struct cx_node_s    *parent;
 #if CX_USING_TAG_ATTR
     uint8_t             numOfAttr;
-    cxn_addr_t          *attrList;
+    cxn_addr_t          *attrList;/*Save a tail-ptr to speedup attribute additions -TODO*/
 #endif
     uint8_t             numOfChildren;
     struct cx_node_s    *children;
@@ -100,7 +102,7 @@ typedef struct cx_node_s {
  * @output : char **xmlData - pointer to store the final xml string 
  * @return : CX_SUCCESS/CX_FAILURE/CX_ERR_ALLOC
  */
-cx_status_t encode_xml_pkt(char **xmlData);
+cx_status_t encode_xml_pkt (char **xmlData);
 
 /**
  * @func   : decode_xml_pkt
@@ -111,10 +113,10 @@ cx_status_t encode_xml_pkt(char **xmlData);
  * @output : cx_node_t **xmlNode - pointer to root-node holder
  * @return : CX_SUCCESS/CX_FAILURE/CX_ERR_ALLOC
  */
-cx_status_t decode_xml_pkt(char *str, cx_node_t **xmlNode);
+cx_status_t decode_xml_pkt (char *str, cx_node_t **xmlNode);
 
 /**
- * @func   : addFirstNode
+ * @func   : cx_addFirstNode
  * @brief  : adds first(root?) node to tree
  * @called : when populating tree for the first time
  * @input  : char *name - tagField
@@ -123,11 +125,11 @@ cx_status_t decode_xml_pkt(char *str, cx_node_t **xmlNode);
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define addFirstNode(name, nodeType) \
-    addNodeToTree(name, nodeType, NULL, CX_ADD_AS_FIRST)
+#define cx_addFirstNode(name, nodeType) \
+    _cx_addNode (name, nodeType, NULL, CXADD_FIRST)
 
 /**
- * @func   : addParentNode
+ * @func   : cx_addParentNode
  * @brief  : adds PARENT type node to tree
  * @called : when populating tree with a PARENT type node
  * @input  : char *name - tagField
@@ -137,11 +139,11 @@ cx_status_t decode_xml_pkt(char *str, cx_node_t **xmlNode);
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define addParentNode(name, addTo, addType) \
-    addNodeToTree(name, CXN_PARENT, addTo, addType)
+#define cx_addParentNode(name, addTo, addType) \
+    _cx_addNode (name, CXN_PARENT, addTo, addType)
 
 /**
- * @func   : addSingleNode
+ * @func   : cx_addSingleNode
  * @brief  : adds SINGLE type node to tree
  * @called : when populating tree with a SINGLE type node (tag is '<node/>')
  * @input  : char *name - tagField
@@ -151,12 +153,12 @@ cx_status_t decode_xml_pkt(char *str, cx_node_t **xmlNode);
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define addSingleNode(name, addTo, addType) \
-    addNodeToTree(name, CXN_SINGLE, addTo, addType)
+#define cx_addSingleNode(name, addTo, addType) \
+    _cx_addNode (name, CXN_SINGLE, addTo, addType)
 
 #if CX_USING_COMMENTS
 /**
- * @func   : addCommentNode
+ * @func   : cx_addCommentNode
  * @brief  : adds COMMENT type node to tree
  * @called : when populating tree with a COMMENT type node: <!-- comment -->
  * @input  : char *comment - comment string
@@ -166,13 +168,13 @@ cx_status_t decode_xml_pkt(char *str, cx_node_t **xmlNode);
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define addCommentNode(comment, addTo, addType) \
-    addNodeToTree(comment, CXN_COMMENT, addTo, addType)
+#define cx_addCommentNode(comment, addTo, addType) \
+    _cx_addNode (comment, CXN_COMMENT, addTo, addType)
 #endif
 
 #if CX_USING_CDATA
 /**
- * @func   : addCDataNode
+ * @func   : cx_addCDataNode
  * @brief  : adds CDATA type node to tree
  * @called : when populating tree with a CDATA type node as below-
  *           <![CDATA[ cdata-string ]]>
@@ -183,13 +185,13 @@ cx_status_t decode_xml_pkt(char *str, cx_node_t **xmlNode);
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define addCDataNode(CData, addTo, addType) \
-    addNodeToTree(CData, CXN_CDATA, addTo, addType)
+#define cx_addCDataNode(CData, addTo, addType) \
+    _cx_addNode (CData, CXN_CDATA, addTo, addType)
 #endif
 
 #if CX_USING_INSTR
 /**
- * @func   : addInstrNode
+ * @func   : cx_addInstrNode
  * @brief  : adds INSTRUCTION type node to tree: <?instr-string?>
  * @called : when populating tree with a INSTRUCTION type node
  * @input  : char *instr - instruction string
@@ -199,12 +201,12 @@ cx_status_t decode_xml_pkt(char *str, cx_node_t **xmlNode);
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define addInstrNode(instr, addTo, addType) \
-    addNodeToTree(instr, CXN_INSTR, addTo, addType)
+#define cx_addInstrNode(instr, addTo, addType) \
+    _cx_addNode (instr, CXN_INSTR, addTo, addType)
 #endif
 
 /**
- * @func   : addContentNode
+ * @func   : cx_addContentNode
  * @brief  : adds CONTENT type node to tree
  * @called : when populating tree with a CONTENT type node(just data, no tag)
  * @input  : char * content - content string
@@ -214,10 +216,10 @@ cx_status_t decode_xml_pkt(char *str, cx_node_t **xmlNode);
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define addContentNode(content, addTo, addType) \
-    addNodeToTree(content, CXN_CONTENT, addTo, addType)
+#define cx_addContentNode(content, addTo, addType) \
+    _cx_addNode (content, CXN_CONTENT, addTo, addType)
 
-cx_status_t addNodeToTree(const char *tagField,
+cx_status_t _cx_addNode (const char *tagField,
 	cxn_type_t nodeType, const char *addTo, cx_addtype_t addType);
 
 /**
@@ -232,7 +234,7 @@ cx_status_t addNodeToTree(const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_addAttr_CHAR(attrName, attrValue, node) \
-    _cx_addAttrToNode(attrName, &attrValue, CXA_CHAR, node)
+    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_CHAR, node)
 
 /**
  * @func   : cx_addAttr_STR
@@ -246,7 +248,7 @@ cx_status_t addNodeToTree(const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_addAttr_STR(attrName, attrValue, node) \
-    _cx_addAttrToNode(attrName, &attrValue, CXA_STR, node)
+    _cx_addAttrToNode (attrName, (cxa_value_u *)attrValue, CXATTR_STR, node)
 
 /**
  * @func   : cx_addAttr_ui8
@@ -260,7 +262,7 @@ cx_status_t addNodeToTree(const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_addAttr_ui8(attrName, attrValue, node) \
-    _cx_addAttrToNode(attrName, &attrValue, CXA_UI8, node)
+    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_UI8, node)
 
 /**
  * @func   : cx_addAttr_si8
@@ -274,7 +276,7 @@ cx_status_t addNodeToTree(const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_addAttr_si8(attrName, attrValue, node) \
-    _cx_addAttrToNode(attrName, &attrValue, CXA_SI8, node)
+    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_SI8, node)
 
 /**
  * @func   : cx_addAttr_ui16
@@ -288,7 +290,7 @@ cx_status_t addNodeToTree(const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_addAttr_ui16(attrName, attrValue, node) \
-    _cx_addAttrToNode(attrName, &attrValue, CXA_UI16, node)
+    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_UI16, node)
 
 /**
  * @func   : cx_addAttr_si16
@@ -302,7 +304,7 @@ cx_status_t addNodeToTree(const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_addAttr_si16(attrName, attrValue, node) \
-    _cx_addAttrToNode(attrName, &attrValue, CXA_SI16, node)
+    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_SI16, node)
 
 /**
  * @func   : cx_addAttr_ui32
@@ -316,7 +318,7 @@ cx_status_t addNodeToTree(const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_addAttr_ui32(attrName, attrValue, node) \
-    _cx_addAttrToNode(attrName, &attrValue, CXA_UI32, node)
+    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_UI32, node)
 
 /**
  * @func   : cx_addAttr_si32
@@ -330,7 +332,7 @@ cx_status_t addNodeToTree(const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_addAttr_si32(attrName, attrValue, node) \
-    _cx_addAttrToNode(attrName, &attrValue, CXA_SI32, node)
+    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_SI32, node)
 
 /**
  * @func   : cx_addAttr_float
@@ -344,10 +346,10 @@ cx_status_t addNodeToTree(const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_addAttr_float(attrName, attrValue, node) \
-    _cx_addAttrToNode(attrName, &attrValue, CXA_FLOAT, node)
+    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_FLOAT, node)
 
-cx_status_t _cx_addAttrToNode(char *attrName, \
-	cxa_value_u *value, cxa_type_t type, char *node);
+cx_status_t _cx_addAttrToNode (char *attrName, \
+	cxa_value_u *value, cxattr_type_t type, char *node);
 
 /**
  * @func   : cx_findNodeWithTag
@@ -359,11 +361,8 @@ cx_status_t _cx_addAttrToNode(char *attrName, \
  * @return : NULL - if no match found
  *           !NULL - if node with specified tag is found
  */
-cx_node_t *cx_findNodeWithTag(char *name, cx_node_t *start);
+cx_node_t *cx_findNodeWithTag (char *name, cx_node_t *start);
 
-void cx_destroyTree(void);
-
-cx_status_t encode_xml_pkt(char **xmlData);
-cx_status_t decode_xml_pkt(char *str, cx_node_t **xmlNode);
+void cx_destroyTree (void);
 
 #endif /*__CXML_API_H*/
