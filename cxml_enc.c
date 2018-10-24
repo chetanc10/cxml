@@ -417,34 +417,17 @@ cx_status_t _cx_addNode (const char *new, cxn_type_t nodeType, const char *addTo
 	}
 
 	if (addType == CXADD_CHILD) {
-#if 0
-		if (prevNode->children) {
-			printf ("%s has already got a child\n", addTo);
-			xStatus = CX_ERR_BAD_NODE;
-			goto CX_ERR_LBL;
-		} 
-		cx_enc_dbg ("adding %s as child to %s\n", new, addTo);
-		prevNode->children = newNode;
-		prevNode->numOfChildren = 1;
-		newNode->parent = prevNode;
-#else
 		/*If asked to be added as child, add it to child list my mother!*/
 		cx_enc_dbg ("adding %s as child to %s\n", new, addTo);
 		if (prevNode->children) {
 			/*Add the new born as the last one*/
-			cx_node_t *_lastChild = prevNode->children;
-			int cnt = prevNode->numOfChildren;
-			while (--cnt) {
-				_lastChild = _lastChild->next;
-			}
-			_lastChild->next = newNode;
+			prevNode->lastChild->next = newNode;
 		} else {
 			/*New born is the first born */
 			prevNode->children = newNode;
 		}
-		prevNode->numOfChildren++;
+		prevNode->lastChild = newNode;
 		newNode->parent = prevNode;
-#endif
 	} else {
 		if (prevNode->next) {
 			printf ("%s has already got a node next to it!\n", prevNode->tagField);
@@ -454,7 +437,6 @@ cx_status_t _cx_addNode (const char *new, cxn_type_t nodeType, const char *addTo
 		cx_enc_dbg ("adding as next\n");
 		newNode->parent = prevNode->parent;
 		prevNode->next = newNode;
-		prevNode->parent->numOfChildren++;
 	}
 
 	prevNode = newNode;
@@ -467,7 +449,8 @@ CX_ERR_LBL:
 			_cx_free (newNode);
 		cx_destroyTree ();
 		prevNode = NULL;
+	} else { /*No failure*/
+		cx_enc_dbg ("now prev: %s\n", prevNode->tagField);
 	}
-	cx_enc_dbg ("now prev: %s\n", prevNode->tagField);
 	return xStatus;
 }

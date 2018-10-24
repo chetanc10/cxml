@@ -19,6 +19,12 @@ int encode_data_in_xml (void)
 	cx_func_lassert (cx_addParentNode ("p", "x", CXADD_CHILD), "add: p");
 	cx_func_lassert (cx_addAttr_STR ("xml:base", "../ents/something.xml", "p"), "add: xmlns-attr");
 	cx_func_lassert (cx_addContentNode ("simple", "p", CXADD_CHILD), "add: p content");
+#if 0
+	cx_func_lassert (cx_addParentNode ("q", "p", CXADD_NEXT), "add: q-next-to-p");
+#else
+	cx_func_lassert (cx_addParentNode ("q", "x", CXADD_CHILD), "add: p");
+#endif
+	cx_func_lassert (cx_addContentNode ("sample", "q", CXADD_CHILD), "add: q content");
 
 	if (encode_xml_pkt (&ptr_encBuf)) {
 		printf ("Failed encoding..!\n");
@@ -32,7 +38,7 @@ CX_ERR_LBL:
 	if (xStatus != CX_SUCCESS) {
 		printf ("Failed encoding xml string!\n");
 	}
-	return ret;
+	return (ret = xStatus);
 }
 
 int decode_data_in_xml (void)

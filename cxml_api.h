@@ -88,8 +88,8 @@ typedef struct cx_node_s {
     uint8_t             numOfAttr;
     cxn_addr_t          *attrList;/*Save a tail-ptr to speedup attribute additions -TODO*/
 #endif
-    uint8_t             numOfChildren;
     struct cx_node_s    *children;
+    struct cx_node_s    *lastChild;
     struct cx_node_s    *next;
 } __attribute__((__packed__)) cx_node_t;
 

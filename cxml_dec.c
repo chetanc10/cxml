@@ -118,20 +118,16 @@ static void populateNodeInTree (cx_node_t **prevNode, cx_node_t **curNode)
 			cx_dec_dbg ("add as child\n");
 			if (!(*prevNode)->children) {
 				cx_dec_dbg ("1st child\n");
-				(*prevNode)->numOfChildren = 0;
 				(*prevNode)->children = (*curNode);
+				(*prevNode)->lastChild = (*curNode);
 			} else {
 				cx_node_t *link = (*prevNode)->children;
 				for (; link->next; link = link->next);
 				link->next = (*curNode);
 			}
 			(*curNode)->parent = (*prevNode);
-			((*prevNode)->numOfChildren)++;
 			cx_dec_dbg ("%s child to %s\n", (*curNode)->tagField, (*curNode)->parent->tagField);
 		} else {
-		    if ((*prevNode)->parent) {
-		        ((*prevNode)->parent->numOfChildren)++;
-		    }
 			(*prevNode)->next = (*curNode);
 			(*curNode)->parent = (*prevNode)->parent;
 			cx_dec_dbg ("%s next to %s\n", (*prevNode)->next->tagField, (*prevNode)->tagField);
