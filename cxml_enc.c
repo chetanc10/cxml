@@ -44,9 +44,16 @@ static cx_status_t putNodeAttr (cx_node_t *xmlNode, char **encPtr)
 }
 #endif
 
+static void _xml_verstring (char **encPtr)
+{
+	*encPtr += sprintf (*encPtr, "<?%s?>", XML_INSTR_STR);
+}
+
 static cx_status_t enc_buildXmlBuf (char **encPtr)
 {
 	cx_node_t *curNode = rootNode;
+
+	_xml_verstring (encPtr);
 
 NEW_NODE:
 	if (curNode->nodeType != CXN_CONTENT) {

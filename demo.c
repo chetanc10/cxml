@@ -4,14 +4,13 @@
 #include "cxml_api.h"
 #include "cxml_errchk.h"
 
-char xmlPkt[1024] = "<?xml version=\"1.0\"?><x xmlns:xinclude=\"http://www.w3.org/2001/XInclude\"><!-- Simple test of including a set of nodes from an XML document --><p xml:base=\"../ents/something.xml\">simple</p></x>";
 cx_node_t *root;
+char encBuf[1024];
 
 int encode_data_in_xml (void)
 {
 	int ret = 0;
 	cx_status_t xStatus;
-	char encBuf[1024];
 	char *ptr_encBuf;
 
 	cx_func_lassert (cx_addFirstNode ("x", CXN_PARENT), "add: x");
@@ -26,6 +25,7 @@ int encode_data_in_xml (void)
 		ret = -1;
 	} else {
 		printf ("Encoded xml packet:\n%s\n", ptr_encBuf);
+		strcpy (encBuf, ptr_encBuf);
 	}
 
 CX_ERR_LBL:
@@ -39,7 +39,7 @@ int decode_data_in_xml (void)
 {
 	int ret = 0;
 
-	if (decode_xml_pkt (xmlPkt, &root)) {
+	if (decode_xml_pkt (encBuf, &root)) {
 		printf ("Failed decoding..!\n");
 		ret = -1;
 	}

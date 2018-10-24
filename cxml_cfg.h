@@ -14,7 +14,8 @@
 /* if error prints not needed, define as 0 */
 #define CX_ERR_PRINT_ALLOWED 1
 
-#define XML_INSTR_STR       "xml version=\"1.0\""
+#define XML_INSTR_STR \
+	"xml version=\"1.0\" encoding=\"UTF-8\""
 
 /*define CX_USING_xxx as 1 if the feature xxx should be included*/
 #define CX_USING_COMMENTS 1 
