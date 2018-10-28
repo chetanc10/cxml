@@ -74,11 +74,11 @@ typedef enum {
     CXADD_MAXTYPE,
 } cx_addtype_t;
 
-typedef struct cxn_addr_s {
+typedef struct cxn_attr_s {
     char                *attrName;
     char                *attrValue;
-    struct cxn_addr_s   *next;
-} cxn_addr_t;
+    struct cxn_attr_s   *next;
+} cxn_attr_t;
 
 typedef struct cx_node_s {
     uint8_t             nodeType;
@@ -86,7 +86,7 @@ typedef struct cx_node_s {
     struct cx_node_s    *parent;
 #if CX_USING_TAG_ATTR
     uint8_t             numOfAttr;
-    cxn_addr_t          *attrList;/*Save a tail-ptr to speedup attribute additions -TODO*/
+    cxn_attr_t          *attrList;/*Save a tail-ptr to speedup attribute additions -TODO*/
 #endif
     struct cx_node_s    *children;
     struct cx_node_s    *lastChild;

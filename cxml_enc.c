@@ -32,7 +32,7 @@ static char *encodedPktStr;
 static cx_status_t putNodeAttr (cx_node_t *xmlNode, char **encPtr)
 {
 	uint8_t n = xmlNode->numOfAttr;
-	cxn_addr_t *attrListPtr = xmlNode->attrList;
+	cxn_attr_t *attrListPtr = xmlNode->attrList;
 
 	for (; n && attrListPtr; n--, attrListPtr = attrListPtr->next) {
 		*encPtr += sprintf (*encPtr, " %s=\"%s\"", \
@@ -176,9 +176,9 @@ cx_status_t encode_xml_pkt (char **xmlData)
 }
 
 #if CX_USING_TAG_ATTR
-static void destroyAttrList (cxn_addr_t **list)
+static void destroyAttrList (cxn_attr_t **list)
 {
-	cxn_addr_t *cur = *list, *prev;
+	cxn_attr_t *cur = *list, *prev;
 
 	do {
 		prev = cur;
@@ -267,7 +267,7 @@ cx_status_t _cx_addAttrToNode (char *attrName, cxa_value_u *value, cxattr_type_t
 {
 	_cx_def_fmts_array (fmt_spec);
 	cx_node_t *node;
-	cxn_addr_t *newAttr;
+	cxn_attr_t *newAttr;
 
 	if (!nodeName) {
 		printf ("null address given for node!\n");
@@ -284,7 +284,7 @@ cx_status_t _cx_addAttrToNode (char *attrName, cxa_value_u *value, cxattr_type_t
 		return CX_ERR_BAD_NODE;
 	}
 
-	_cx_calloc (newAttr, sizeof (cxn_addr_t));
+	_cx_calloc (newAttr, sizeof (cxn_attr_t));
 	if (!newAttr) {
 		printf ("memory allocation error for new attr\n");
 		return CX_ERR_ALLOC;
@@ -341,7 +341,7 @@ cx_status_t _cx_addAttrToNode (char *attrName, cxa_value_u *value, cxattr_type_t
 		node->attrList = newAttr;
 		node->numOfAttr = 0;
 	} else {
-		cxn_addr_t *link = node->attrList;
+		cxn_attr_t *link = node->attrList;
 		cx_enc_dbg ("linking attr\n");
 		for (; link->next; link = link->next);
 		link->next = newAttr;

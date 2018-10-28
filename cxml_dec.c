@@ -45,7 +45,7 @@ static inline char * findStrToken (char *str, const char *token, uint8_t checkTy
 #if CX_USING_TAG_ATTR
 static cx_status_t getNodeAttr (cx_node_t **xmlNode, char **tag)
 {
-	cxn_addr_t *curAttr = NULL, *lastAttr = NULL;
+	cxn_attr_t *curAttr = NULL, *lastAttr = NULL;
 	char *ptr, *tPtr, *tEnd = strchr (*tag, '>');
 
 	if (!(*tag)) {
@@ -64,7 +64,7 @@ static cx_status_t getNodeAttr (cx_node_t **xmlNode, char **tag)
 
 	cx_dec_dbg ("finding attrs for %s\n", (*xmlNode)->tagField);
 	do {
-		_cx_calloc (curAttr, sizeof (cxn_addr_t));
+		_cx_calloc (curAttr, sizeof (cxn_attr_t));
 		if (!curAttr) {
 			printf ("doomed memory\n");
 			return CX_ERR_ALLOC;
