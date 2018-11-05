@@ -7,23 +7,7 @@
 
 #include "cxml_cfg.h"
 
-/* This file gives the application interface to use cxml encoder/decoder
- * Just don't worry about symbol with '_' as first character */
-
 #pragma pack(1)
-
-typedef union attrValue_union {
-    char      *str;
-    char      ch;
-    int8_t    n_i8;
-    uint8_t   n_u8;
-    uint16_t  n_u16;
-    int16_t   n_i16;
-    uint32_t  n_u32;
-    int32_t   n_i32;
-    float     f;
-    uint32_t  xVal; /*to refer all variables here in generic*/
-} cxa_value_u;
 
 typedef enum {
     CX_SUCCESS = 0,
@@ -35,6 +19,7 @@ typedef enum {
     CX_ERR_BAD_TAG,
     CX_ERR_BAD_ATTR,
     CX_ERR_BAD_NODETYPE,
+    CX_ERR_FIRST_NODE,
     CX_FAILURE,
 } cx_status_t;
 
@@ -72,297 +57,317 @@ typedef enum {
     CXADD_NEXT,
     CXADD_FIRST,
     CXADD_MAXTYPE,
-} cx_addtype_t;
+} cx_Addtype_t;
 
-typedef struct cxn_attr_s {
-    char                *attrName;
-    char                *attrValue;
-    struct cxn_attr_s   *next;
-} cxn_attr_t;
-
-typedef struct cx_node_s {
-    uint8_t             nodeType;
-    char                *tagField;
-    struct cx_node_s    *parent;
-#if CX_USING_TAG_ATTR
-    uint8_t             numOfAttr;
-    cxn_attr_t          *attrList;/*Save a tail-ptr to speedup attribute additions -TODO*/
-#endif
-    struct cx_node_s    *children;
-    struct cx_node_s    *lastChild;
-    struct cx_node_s    *next;
-} __attribute__((__packed__)) cx_node_t;
+typedef union attrValue_union {
+    char      *str;
+    char      ch;
+    int8_t    n_i8;
+    uint8_t   n_u8;
+    uint16_t  n_u16;
+    int16_t   n_i16;
+    uint32_t  n_u32;
+    int32_t   n_i32;
+    float     f;
+    uint32_t  xVal; /*to refer all variables here in generic*/
+} cxa_value_u;
 
 /**
- * @func   : encode_xml_pkt
+ * @func   : cx_EncPkt
  * @brief  : build an xml formatted string from an existing xml-tree
  * @called : when an xml tree is finalised and xml string is needed
  *           to be built from that tree (FIXME add tree-contexts)
- * @input  : none
+ * @input  : void *_cookie - pointer to select xml-context
  * @output : char **xmlData - pointer to store the final xml string 
  * @return : CX_SUCCESS/CX_FAILURE/CX_ERR_ALLOC
  */
-cx_status_t encode_xml_pkt (char **xmlData);
+cx_status_t cx_EncPkt (void *_cookie, char **xmlData);
 
 /**
- * @func   : decode_xml_pkt
+ * @func   : cx_DecPkt
  * @brief  : build an xml tree from an existing xml-string
  * @called : when a peer sends xml content packet and we need to
  *           validate and parse the same properly to build xml-tree
  * @input  : char *str - existing xml string
- * @output : cx_node_t **xmlNode - pointer to root-node holder
+ * @output : void **_cookie - pointer filled to the freshly created xml-context
  * @return : CX_SUCCESS/CX_FAILURE/CX_ERR_ALLOC
  */
-cx_status_t decode_xml_pkt (char *str, cx_node_t **xmlNode);
+cx_status_t cx_DecPkt (void **_cookie, char *str);
 
 /**
- * @func   : cx_addFirstNode
+ * @func   : cx_AddFirstNode
  * @brief  : adds first(root?) node to tree
  * @called : when populating tree for the first time
- * @input  : char *name - tagField
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *name - tagField
  *           cxn_type_t nodeType - type of node
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define cx_addFirstNode(name, nodeType) \
-    _cx_addNode (name, nodeType, NULL, CXADD_FIRST)
+#define cx_AddFirstNode(_cookie, name, nodeType) \
+    _cx_AddNode (_cookie, name, nodeType, NULL, CXADD_FIRST)
 
 /**
- * @func   : cx_addParentNode
+ * @func   : cx_AddParentNode
  * @brief  : adds PARENT type node to tree
  * @called : when populating tree with a PARENT type node
- * @input  : char *name - tagField
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *name - tagField
  *           char *addTo - name of node to which current node is added
- *           cx_addtype_t addType - to add as child/next/first node
+ *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define cx_addParentNode(name, addTo, addType) \
-    _cx_addNode (name, CXN_PARENT, addTo, addType)
+#define cx_AddParentNode(_cookie, name, addTo, addType) \
+    _cx_AddNode (_cookie, name, CXN_PARENT, addTo, addType)
 
 /**
- * @func   : cx_addSingleNode
+ * @func   : cx_AddSingleNode
  * @brief  : adds SINGLE type node to tree
  * @called : when populating tree with a SINGLE type node (tag is '<node/>')
- * @input  : char *name - tagField
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *name - tagField
  *           char *addTo - name of node to which current node is added
- *           cx_addtype_t addType - to add as child/next/first node
+ *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define cx_addSingleNode(name, addTo, addType) \
-    _cx_addNode (name, CXN_SINGLE, addTo, addType)
+#define cx_AddSingleNode(_cookie, name, addTo, addType) \
+    _cx_AddNode (_cookie, name, CXN_SINGLE, addTo, addType)
 
 #if CX_USING_COMMENTS
 /**
- * @func   : cx_addCommentNode
+ * @func   : cx_AddCommentNode
  * @brief  : adds COMMENT type node to tree
  * @called : when populating tree with a COMMENT type node: <!-- comment -->
- * @input  : char *comment - comment string
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *comment - comment string
  *           char *addTo - name of node to which current node is added
- *           cx_addtype_t addType - to add as child/next/first node
+ *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define cx_addCommentNode(comment, addTo, addType) \
-    _cx_addNode (comment, CXN_COMMENT, addTo, addType)
+#define cx_AddCommentNode(_cookie, comment, addTo, addType) \
+    _cx_AddNode (_cookie, comment, CXN_COMMENT, addTo, addType)
 #endif
 
 #if CX_USING_CDATA
 /**
- * @func   : cx_addCDataNode
+ * @func   : cx_AddCDataNode
  * @brief  : adds CDATA type node to tree
  * @called : when populating tree with a CDATA type node as below-
  *           <![CDATA[ cdata-string ]]>
- * @input  : char *CData - CDATA string
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *CData - CDATA string
  *           char *addTo - name of node to which current node is added
- *           cx_addtype_t addType - to add as child/next/first node
+ *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define cx_addCDataNode(CData, addTo, addType) \
-    _cx_addNode (CData, CXN_CDATA, addTo, addType)
+#define cx_AddCDataNode(_cookie, CData, addTo, addType) \
+    _cx_AddNode (_cookie, CData, CXN_CDATA, addTo, addType)
 #endif
 
 #if CX_USING_INSTR
 /**
- * @func   : cx_addInstrNode
+ * @func   : cx_AddInstrNode
  * @brief  : adds INSTRUCTION type node to tree: <?instr-string?>
  * @called : when populating tree with a INSTRUCTION type node
- * @input  : char *instr - instruction string
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *instr - instruction string
  *           char *addTo - name of node to which current node is added
- *           cx_addtype_t addType - to add as child/next/first node
+ *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define cx_addInstrNode(instr, addTo, addType) \
-    _cx_addNode (instr, CXN_INSTR, addTo, addType)
+#define cx_AddInstrNode(_cookie, instr, addTo, addType) \
+    _cx_AddNode (_cookie, instr, CXN_INSTR, addTo, addType)
 #endif
 
 /**
- * @func   : cx_addContentNode
+ * @func   : cx_AddContentNode
  * @brief  : adds CONTENT type node to tree
  * @called : when populating tree with a CONTENT type node(just data, no tag)
- * @input  : char * content - content string
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *content - content string
  *           char *addTo - name of node to which current node is added
- *           cx_addtype_t addType - to add as child/next/first node
+ *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-#define cx_addContentNode(content, addTo, addType) \
-    _cx_addNode (content, CXN_CONTENT, addTo, addType)
+#define cx_AddContentNode(_cookie, content, addTo, addType) \
+    _cx_AddNode (_cookie, content, CXN_CONTENT, addTo, addType)
 
-cx_status_t _cx_addNode (const char *tagField,
-	cxn_type_t nodeType, const char *addTo, cx_addtype_t addType);
+cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
+	cxn_type_t nodeType, const char *addTo, cx_Addtype_t addType);
 
 /**
- * @func   : cx_addAttr_CHAR
+ * @func   : cx_AddAttr_CHAR
  * @brief  : adds CHAR type attribute to attr list of given node
  * @called : when required to add attr to a node
- * @input  : attrName - name of attr (converted to name string)
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *attrName - name of attr (converted to name string)
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_FAILURE
  */
-#define cx_addAttr_CHAR(attrName, attrValue, node) \
-    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_CHAR, node)
+#define cx_AddAttr_CHAR(_cookie, attrname, attrValue, node) \
+    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_CHAR, node)
 
 /**
- * @func   : cx_addAttr_STR
+ * @func   : cx_AddAttr_STR
  * @brief  : adds STRING type attribute to attr list of given node
  * @called : when required to add attr to a node
- * @input  : attrName - name of attr (converted to name string)
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *attrName - name of attr (converted to name string)
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_FAILURE
  */
-#define cx_addAttr_STR(attrName, attrValue, node) \
-    _cx_addAttrToNode (attrName, (cxa_value_u *)attrValue, CXATTR_STR, node)
+#define cx_AddAttr_STR(_cookie, attrname, attrValue, node) \
+    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)attrValue, CXATTR_STR, node)
 
 /**
- * @func   : cx_addAttr_ui8
+ * @func   : cx_AddAttr_ui8
  * @brief  : adds unsigned 8-bit int attribute to attr list of given node
  * @called : when required to add attr to a node
- * @input  : attrName - name of attr (converted to name string)
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *attrName - name of attr (converted to name string)
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_FAILURE
  */
-#define cx_addAttr_ui8(attrName, attrValue, node) \
-    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_UI8, node)
+#define cx_AddAttr_ui8(_cookie, attrname, attrValue, node) \
+    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_UI8, node)
 
 /**
- * @func   : cx_addAttr_si8
+ * @func   : cx_AddAttr_si8
  * @brief  : adds signed 8-bit int attribute to attr list of given node
  * @called : when required to add attr to a node
- * @input  : attrName - name of attr (converted to name string)
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *attrName - name of attr (converted to name string)
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_FAILURE
  */
-#define cx_addAttr_si8(attrName, attrValue, node) \
-    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_SI8, node)
+#define cx_AddAttr_si8(_cookie, attrname, attrValue, node) \
+    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_SI8, node)
 
 /**
- * @func   : cx_addAttr_ui16
+ * @func   : cx_AddAttr_ui16
  * @brief  : adds unsigned 16-bit int attribute to attr list of given node
  * @called : when required to add attr to a node
- * @input  : attrName - name of attr (converted to name string)
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *attrName - name of attr (converted to name string)
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_FAILURE
  */
-#define cx_addAttr_ui16(attrName, attrValue, node) \
-    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_UI16, node)
+#define cx_AddAttr_ui16(_cookie, attrname, attrValue, node) \
+    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_UI16, node)
 
 /**
- * @func   : cx_addAttr_si16
+ * @func   : cx_AddAttr_si16
  * @brief  : adds signed 16-bit int attribute to attr list of given node
  * @called : when required to add attr to a node
- * @input  : attrName - name of attr (converted to name string)
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *attrName - name of attr (converted to name string)
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_FAILURE
  */
-#define cx_addAttr_si16(attrName, attrValue, node) \
-    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_SI16, node)
+#define cx_AddAttr_si16(_cookie, attrname, attrValue, node) \
+    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_SI16, node)
 
 /**
- * @func   : cx_addAttr_ui32
+ * @func   : cx_AddAttr_ui32
  * @brief  : adds unsigned 32-bit int attribute to attr list of given node
  * @called : when required to add attr to a node
- * @input  : attrName - name of attr (converted to name string)
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *attrName - name of attr (converted to name string)
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_FAILURE
  */
-#define cx_addAttr_ui32(attrName, attrValue, node) \
-    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_UI32, node)
+#define cx_AddAttr_ui32(_cookie, attrname, attrValue, node) \
+    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_UI32, node)
 
 /**
- * @func   : cx_addAttr_si32
+ * @func   : cx_AddAttr_si32
  * @brief  : adds signed 32-bit int attribute to attr list of given node
  * @called : when required to add attr to a node
- * @input  : attrName - name of attr (converted to name string)
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *attrName - name of attr (converted to name string)
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_FAILURE
  */
-#define cx_addAttr_si32(attrName, attrValue, node) \
-    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_SI32, node)
+#define cx_AddAttr_si32(_cookie, attrname, attrValue, node) \
+    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_SI32, node)
 
 /**
- * @func   : cx_addAttr_float
+ * @func   : cx_AddAttr_float
  * @brief  : adds float type attribute to attr list of given node
  * @called : when required to add attr to a node
- * @input  : attrName - name of attr (converted to name string)
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *attrName - name of attr (converted to name string)
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_FAILURE
  */
-#define cx_addAttr_float(attrName, attrValue, node) \
-    _cx_addAttrToNode (attrName, (cxa_value_u *)&attrValue, CXATTR_FLOAT, node)
+#define cx_AddAttr_float(_cookie, attrname, attrValue, node) \
+    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_FLOAT, node)
 
-cx_status_t _cx_addAttrToNode (char *attrName, \
-	cxa_value_u *value, cxattr_type_t type, char *node);
+#if CX_USING_TAG_ATTR
+cx_status_t _cx_AddAttrToNode (void *_cookie, char *attrName, cxa_value_u *value, cxattr_type_t type, char *node);
+#endif /*CX_USING_TAG_ATTR*/
 
 /**
- * @func   : cx_findNodeWithTag
- * @brief  : use an input tag string to find node that contains that tag
- * @called : when a tagged node is needed to process/update status,etc
- * @input  : char *name - name of the 
- *           cx_node_t *start - parent/root node to start search
- * @output : none
- * @return : NULL - if no match found
- *           !NULL - if node with specified tag is found
+ * @func   : cx_CreateSession
+ * @brief  : Create new session for xml operations and give out session cookie
+ * @called : when new xml operation is required
+ * @input  : char *name - name identofying the purpose of this session
+ *           char *uxs - optional string pointer for encoder to from xml string
+ *           initXmlLength - Only if uxs is valid, takes an initial length, else don't care
+ * @output : void *_cookie - pointer to xml-context after successful session setup
+ * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
+ *           CX_ERR_ALLOC/CX_FAILURE
  */
-cx_node_t *cx_findNodeWithTag (char *name, cx_node_t *start);
+cx_status_t cx_CreateSession (void **_cookie, char *name, char *uxs, uint32_t initXmlLength);
 
-void cx_destroyTree (void);
+/**
+ * @func   : cx_DestroySession
+ * @brief  : Destroy an existing session
+ * @called : when particular xml session is no more required
+ * @input  : void *_cookie - pointer to a valid xml-context
+ * @output : none
+ * @return : void
+ */
+void cx_DestroySession (void *_cookie);
 
 #endif /*__CXML_API_H*/

@@ -25,9 +25,6 @@
 #define IS_HAVING_ATTR(node) (node->numOfAttr && node->attrList)
 #endif
 
-cx_node_t *rootNode = NULL;
-static char *encodedPktStr;
-
 #if CX_USING_TAG_ATTR
 static cx_status_t putNodeAttr (cx_node_t *xmlNode, char **encPtr)
 {
@@ -37,7 +34,7 @@ static cx_status_t putNodeAttr (cx_node_t *xmlNode, char **encPtr)
 	for (; n && attrListPtr; n--, attrListPtr = attrListPtr->next) {
 		*encPtr += sprintf (*encPtr, " %s=\"%s\"", \
 				attrListPtr->attrName, attrListPtr->attrValue);
-		cx_enc_dbg ("attr::\n\r%s\n\r", encodedPktStr);
+		cx_enc_dbg ("attr::\n\r%s\n\r", *encPtr);
 	}
 
 	return (n || attrListPtr) ? CX_ERR_BAD_ATTR:CX_SUCCESS;
@@ -49,67 +46,68 @@ static void _xml_verstring (char **encPtr)
 	*encPtr += sprintf (*encPtr, "<?%s?>", XML_INSTR_STR);
 }
 
-static cx_status_t enc_buildXmlBuf (char **encPtr)
+static cx_status_t cx_BuildXmlString (cx_cookie_t *cookie)
 {
-	cx_node_t *curNode = rootNode;
+	cx_node_t *curNode = cookie->root;
+	char *encPtr = cookie->xs;
 
-	_xml_verstring (encPtr);
+	_xml_verstring (&encPtr);
 
 NEW_NODE:
 	if (curNode->nodeType != CXN_CONTENT) {
-		*encPtr += sprintf (*encPtr, "<");
+		encPtr += sprintf (encPtr, "<");
 	}
 
 	switch (curNode->nodeType) {
 #if CX_USING_COMMENTS
-		case CXN_COMMENT: *encPtr += sprintf (*encPtr, "!--"); break;
+		case CXN_COMMENT: encPtr += sprintf (encPtr, "!--"); break;
 #endif
 #if CX_USING_CDATA
-		case CXN_CDATA: *encPtr += sprintf (*encPtr, "![CDATA["); break;
+		case CXN_CDATA: encPtr += sprintf (encPtr, "![CDATA["); break;
 #endif
 #if CX_USING_INSTR
-		case CXN_INSTR: *encPtr += sprintf (*encPtr, "?"); break;
+		case CXN_INSTR: encPtr += sprintf (encPtr, "?"); break;
 #endif
 		default: break;
 	}
 
-	*encPtr += sprintf (*encPtr, "%s", curNode->tagField);
-	cx_enc_dbg ("1:\n\r%s\n\r", encodedPktStr);
+	encPtr += sprintf (encPtr, "%s", curNode->tagField);
+	cx_enc_dbg ("1:\n\r%s\n\r", encPtr);
 
 	switch (curNode->nodeType) {
 		case CXN_SINGLE:
 		case CXN_PARENT:
 #if CX_USING_TAG_ATTR
 			if (IS_HAVING_ATTR(curNode) && \
-					(CX_SUCCESS != putNodeAttr (curNode, encPtr))) {
+					(CX_SUCCESS != putNodeAttr (curNode, &encPtr))) {
 				return CX_FAILURE;
 			}
 #endif
-			*encPtr += sprintf (*encPtr, \
+			encPtr += sprintf (encPtr, \
 					(curNode->nodeType == CXN_SINGLE)?"/>":">");
 			break;
 #if CX_USING_COMMENTS
 		case CXN_COMMENT:
-			*encPtr += sprintf (*encPtr, "-->");
+			encPtr += sprintf (encPtr, "-->");
 			break;
 #endif
 #if CX_USING_CDATA
 		case CXN_CDATA:
-			*encPtr += sprintf (*encPtr, "]]>");
+			encPtr += sprintf (encPtr, "]]>");
 			break;
 #endif
 #if CX_USING_INSTR
 		case CXN_INSTR:
-			*encPtr += sprintf (*encPtr, "?>");
+			encPtr += sprintf (encPtr, "?>");
 			break;
 #endif
 		default:
 			break;
 	}
 
-	cx_enc_dbg ("2:\n\r%s\n\r", encodedPktStr);
+	cx_enc_dbg ("2:\n\r%s\n\r", cookie->xs);
 
-	if (((*encPtr - encodedPktStr) > MAX_TX_XML_PKT_SIZE)) {
+	if (((encPtr - cookie->xs) > CX_MAX_ENC_STR_SZ)) {
 		printf ("OverFlown xml encoded tree for buffer\n");
 		return CX_ERR_ENC_OVERFLOW;
 	}
@@ -122,15 +120,15 @@ NEW_NODE:
 NEXT_NODE:
 	if (curNode->next) {
 		if (curNode->nodeType == CXN_PARENT) {
-			*encPtr += sprintf (*encPtr, "</%s>", curNode->tagField);
+			encPtr += sprintf (encPtr, "</%s>", curNode->tagField);
 		}
 		curNode = curNode->next;
-		cx_enc_dbg ("3:\n\r%s\n\r", encodedPktStr);
+		cx_enc_dbg ("3:\n\r%s\n\r", cookie->xs);
 		goto NEW_NODE;
 	} else {
 		if (curNode->nodeType == CXN_PARENT) {
-			*encPtr += sprintf (*encPtr, "</%s>", curNode->tagField);
-			cx_enc_dbg ("4:\n\r%s\n\r", encodedPktStr);
+			encPtr += sprintf (encPtr, "</%s>", curNode->tagField);
+			cx_enc_dbg ("4:\n\r%s\n\r", cookie->xs);
 		}
 		if (curNode->parent) {
 			curNode = curNode->parent;
@@ -142,37 +140,41 @@ NEXT_NODE:
 	return CX_SUCCESS;
 }
 
-cx_status_t encode_xml_pkt (char **xmlData)
+cx_status_t cx_EncPkt (void *_cookie, char **xmlData)
 {
-    cx_status_t ret;
-	char *encPtr = NULL;
+    cx_status_t xStatus;
+	cx_cookie_t *cookie = (cx_cookie_t *)_cookie;
 
-	if ((NULL == rootNode) || \
-			IS_INVALID_NODE_TYPE(rootNode->nodeType) || \
-			!IS_NODE_SINGLE_VALID(rootNode)) {
+	if ((NULL == cookie->root) || \
+			IS_INVALID_NODE_TYPE(cookie->root->nodeType) || \
+			!IS_NODE_SINGLE_VALID(cookie->root)) {
 		return CX_FAILURE;
 	}
 
-	encodedPktStr = malloc (MAX_TX_XML_PKT_SIZE);
-	if (!encodedPktStr) {
-		printf ("Error allocating in XML encoder\n");
-		return CX_ERR_ALLOC;
+	if (!cookie->xsIsFromUser) { /*if we have to manage xml-string memory*/
+		/*get actual xml-strlen including tag-delimiters! -TODO*/
+		_cx_calloc (cookie->xs, cookie->xmlLength);
+		if (!cookie->xs) {
+			printf ("Error allocating in XML encoder\n");
+			return CX_ERR_ALLOC;
+		}
 	}
 
-	memset (encodedPktStr, 0, MAX_TX_XML_PKT_SIZE);
-	encPtr = encodedPktStr;
-
-	ret = enc_buildXmlBuf (&encPtr);
-	if (CX_SUCCESS != ret) {
-		printf ("failed to build xml packet buffer!\n");
-		_cx_free (encodedPktStr);
-	    cx_destroyTree ();
+	xStatus = cx_BuildXmlString (cookie);
+	if (CX_SUCCESS != xStatus) {
+		printf ("failed building xml string: %s\n", cookie->name);
 		return CX_FAILURE;
 	}
 
-	*xmlData = encodedPktStr;
-	cx_enc_dbg ("PACKET: \n%s\n", encodedPktStr);
-	return ret;
+	if (!cookie->xsIsFromUser && (xStatus == CX_SUCCESS)) {
+		cx_null_lassert (xmlData);
+		*xmlData = (xStatus == CX_SUCCESS) ? cookie->xs : NULL;
+	}
+
+	cx_enc_dbg ("PACKET: \n%s\n", cookie->xs);
+
+CX_ERR_LBL:
+	return xStatus;
 }
 
 #if CX_USING_TAG_ATTR
@@ -188,17 +190,25 @@ static void destroyAttrList (cxn_attr_t **list)
 }
 #endif
 
-void cx_destroyTree (void)
+/**
+ * @func   : _cx_destroyTree
+ * @brief  : destroys a given xml tree
+ * @called : when this xml tree is no longer required
+ * @input  : cx_cookie_t *cookie - pointer to select xml-context
+ * @output : none
+ * @return : void
+ */
+void _cx_destroyTree (cx_cookie_t *cookie)
 {
-	cx_node_t *curNode = rootNode;
+	cx_node_t *curNode = cookie->root;
 
 	if (!curNode) {
+		cx_enc_dbg ("Nothing to destroy\n");
 		return;
 	}
 
-	cx_enc_dbg ("Destroying xml tree from: %s\r\n", rootNode->tagField);
+	cx_enc_dbg ("Destroying xml tree from: %s\r\n", curNode->tagField);
 
-	rootNode = NULL;
 	while (curNode) {
 		cx_enc_dbg ("cur: %p:%s\n", curNode, curNode->tagField);
 		if (curNode->children) {
@@ -233,14 +243,27 @@ FREE_NODE:
 			curNode = temp;
 		}
 	}
+	cookie->root = NULL;
 	cx_enc_dbg ("destruction of the Tree complete\r\n");
 }
 
-cx_node_t *cx_findNodeWithTag (char *name, cx_node_t *start)
+/**
+ * @func   : cx_FindNodeWithTag
+ * @brief  : use an input tag string to find node that contains that tag
+ * @called : when a tagged node is needed to process/update status,etc
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *name - name of the tag for required node
+ * @output : none
+ * @return : NULL - if no match found
+ *           !NULL - if node with specified tag is found
+ */
+cx_node_t *cx_FindNodeWithTag (void *_cookie, char *name)
 {
-	cx_node_t *curNode = start;
+	cx_cookie_t *cookie = (cx_cookie_t *)_cookie;
+	cx_node_t *curNode = cookie->root;
 
-	if (!start) {
+	if (!curNode) {
+		cx_enc_dbg ("Can't have NULL to start with!");
 		return (cx_node_t *)NULL;
 	}
 
@@ -263,9 +286,10 @@ cx_node_t *cx_findNodeWithTag (char *name, cx_node_t *start)
 }
 
 #if CX_USING_TAG_ATTR
-cx_status_t _cx_addAttrToNode (char *attrName, cxa_value_u *value, cxattr_type_t type, char *nodeName)
+cx_status_t _cx_AddAttrToNode (void *_cookie, char *attrName, cxa_value_u *value, cxattr_type_t type, char *nodeName)
 {
 	_cx_def_fmts_array (fmt_spec);
+	cx_cookie_t *cookie = (cx_cookie_t *)_cookie;
 	cx_node_t *node;
 	cxn_attr_t *newAttr;
 
@@ -278,13 +302,13 @@ cx_status_t _cx_addAttrToNode (char *attrName, cxa_value_u *value, cxattr_type_t
 		return CX_ERR_BAD_ATTR;
 	}
 
-	node = cx_findNodeWithTag (nodeName, rootNode);
+	node = cx_FindNodeWithTag (cookie, nodeName);
 	if (!node) {
 		printf ("No node named %s\n", nodeName);
 		return CX_ERR_BAD_NODE;
 	}
 
-	_cx_calloc (newAttr, sizeof (cxn_attr_t));
+	_cx_malloc (newAttr, sizeof (cxn_attr_t));
 	if (!newAttr) {
 		printf ("memory allocation error for new attr\n");
 		return CX_ERR_ALLOC;
@@ -304,6 +328,7 @@ cx_status_t _cx_addAttrToNode (char *attrName, cxa_value_u *value, cxattr_type_t
 		printf ("memory allocation error for new attr value\n");
 		return CX_ERR_ALLOC;
 	}
+	newAttr->next = NULL;
 
 	switch (type) { /*Try to avoid switch by using #macros -TODO*/
 		case CXATTR_STR:
@@ -333,6 +358,8 @@ cx_status_t _cx_addAttrToNode (char *attrName, cxa_value_u *value, cxattr_type_t
 		case CXATTR_FLOAT:
 			sprintf (newAttr->attrValue, fmt_spec[type], (float)value->xVal);
 			break;
+		case CXATTR_MAX: /*Just removing compiler warning*/
+			break;
 	}
 	cx_enc_dbg ("attr-val-str: %s\n", newAttr->attrValue);
 
@@ -354,28 +381,28 @@ cx_status_t _cx_addAttrToNode (char *attrName, cxa_value_u *value, cxattr_type_t
 #endif
 
 /**
- * @func   : _cx_addNode
+ * @func   : _cx_AddNode
  * @brief  : adds a new node to tree
  * @called : when populating tree with a new node as child/next/first
  * @input  : char *new - tagField for tagName/content/cdata/comment
  *           char *addTo - tagField for previous node to which new one is added
  *                       This is required so that user can properly populate nodes
  *           cxn_type_t nodeType - type of new node
- *           cx_addtype_t addType - to add as child/next/first node
+ *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
  * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
-cx_status_t _cx_addNode (const char *new, cxn_type_t nodeType, const char *addTo, cx_addtype_t addType)
+cx_status_t _cx_AddNode (void *_cookie, const char *new, cxn_type_t nodeType, const char *addTo, cx_Addtype_t addType)
 {
 	/*give CX_SUCCESS if addtype is valid*/
 #define BAD_ADDTYPE_VAL(type) \
 	((type <= CXADD_MINTYPE) || (type >= CXADD_MAXTYPE))
 #define INVALID_POPULATING(type) \
 	((type != CXADD_CHILD) && (type != CXADD_NEXT))
-#define ROOT_EXISTS() (NULL != rootNode)
 
 	cx_node_t *newNode = NULL;
-	static cx_node_t *prevNode = NULL;
+	cx_cookie_t *cookie = (cx_cookie_t *)_cookie;
+	cx_node_t *prevNode;
 	cx_status_t xStatus = CX_SUCCESS;
 
 	cx_lassert (IS_INVALID_NODE_TYPE(nodeType), CX_ERR_BAD_NODE, "Invalid nodeType\n");
@@ -385,7 +412,6 @@ cx_status_t _cx_addNode (const char *new, cxn_type_t nodeType, const char *addTo
 	cx_lassert (BAD_ADDTYPE_VAL(addType), CX_ERR_BAD_NODE, "Invalid addType\n");
 
 	cx_enc_dbg ("newNode: %s\r\n", new);
-// 	cx_lassert ((INVALID_POPULATING(addType) && ROOT_EXISTS()), CX_ERR_BAD_NODE, "Invalid addType\n");
 
 	_cx_calloc (newNode, sizeof (cx_node_t));
 	cx_null_lassert (newNode);
@@ -396,14 +422,16 @@ cx_status_t _cx_addNode (const char *new, cxn_type_t nodeType, const char *addTo
 	newNode->nodeType = nodeType;
 
 	if (addType == CXADD_FIRST) {
-		/*destroy any previous tree to have new tree planted*/
-	    cx_destroyTree ();
-		rootNode = prevNode = newNode;
-		cx_enc_dbg ("\"%s\" is rootNode\n", rootNode->tagField);
+		cx_lassert ((cookie->root != NULL), CX_ERR_FIRST_NODE, "First node already filled!");
+		/*Xml Origins: root-node*/
+		cookie->root = cookie->recent = newNode;
+		cx_enc_dbg ("\"%s\" is root-node\n", newNode->tagField);
 		return CX_SUCCESS;
-	} else {
-		cx_null_lassert (addTo);
 	}
+
+	cx_null_lassert (addTo);
+
+	prevNode = cookie->recent;
 
 	if (CX_SUCCESS != strcmp (addTo, prevNode->tagField)) {
 	   	if (CX_SUCCESS == strcmp (addTo, prevNode->parent->tagField)) {
@@ -439,18 +467,65 @@ cx_status_t _cx_addNode (const char *new, cxn_type_t nodeType, const char *addTo
 		prevNode->next = newNode;
 	}
 
-	prevNode = newNode;
+	cookie->recent = newNode;
 
 CX_ERR_LBL:
 	if (xStatus != CX_SUCCESS) {
-		if (newNode->tagField)
-			_cx_free (newNode->tagField);
-		if (newNode)
-			_cx_free (newNode);
-		cx_destroyTree ();
-		prevNode = NULL;
+		_cx_free (newNode->tagField);
+		_cx_free (newNode);
 	} else { /*No failure*/
-		cx_enc_dbg ("now prev: %s\n", prevNode->tagField);
+		cx_enc_dbg ("now prev: %s\n", newNode->tagField);
 	}
 	return xStatus;
+}
+
+cx_status_t cx_CreateSession (void **_cookie, char *name, char *uxs, uint32_t initXmlLength)
+{
+	cx_status_t xStatus = CX_SUCCESS;
+	cx_cookie_t *cookie;
+
+	cx_null_lassert (_cookie);
+	cx_lassert ((initXmlLength >= CX_MAX_ENC_STR_SZ), \
+			CX_ERR_ENC_OVERFLOW, "Requested initXmlLength out of bounds!");
+
+	_cx_calloc (cookie, sizeof (cx_cookie_t));
+	cx_null_lassert (cookie);
+
+	cookie->cxCode = CX_COOKIE_MAGIC;
+	strncpy (cookie->name, name ? name : "unknown", CX_COOKIE_NAMELEN);
+	if (uxs != NULL) {
+		cookie->uxsLength = initXmlLength;
+		cookie->xsIsFromUser = 1;
+		cookie->xs = uxs;
+	}
+	/* We could allocate a small buffer if !uxs, but do it later
+	 * only when cx_EncPkt is called. If user cancels before cx_EncPkt call,
+	 * it's a waste of resource to pre-allocate and free without using it.
+	 * Moreover, allocating in cx_EncPkt helps us to allocate with correct
+	 * length of final string required.
+	 * */
+	*_cookie = cookie;
+
+CX_ERR_LBL:
+	if (xStatus != CX_SUCCESS) {
+		if (cookie->xsIsFromUser) {
+			_cx_free (cookie->xs);
+		}
+		_cx_free (cookie);
+	}
+	return xStatus;
+}
+
+void cx_DestroySession (void *_cookie)
+{
+	cx_cookie_t *cookie = (cx_cookie_t *)_cookie;
+
+	if (cookie && (cookie->cxCode == CX_COOKIE_MAGIC)) {
+		if (!cookie->xsIsFromUser) {/*Library allocated xml-string? Free it!*/	
+			_cx_free (cookie->xs);
+		}
+		_cx_destroyTree (cookie);
+		cookie->cxCode = 0;
+		_cx_free (cookie);
+	}
 }

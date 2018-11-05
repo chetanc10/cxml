@@ -17,11 +17,6 @@
 #define SKIP_LETTERS(ptr) \
 	while (ptr && *ptr && !isspace ((int)*ptr) && (*ptr !='/') && (*ptr !='>')) { ptr++; }
 
-extern cx_node_t *rootNode;
-
-static char *decBasePtr;
-static char *decPtr;
-
 #define BET_TOKEN 0x01
 #define GET_TOKEN 0x02
 static inline char * findStrToken (char *str, const char *token, uint8_t checkType)
@@ -43,14 +38,16 @@ static inline char * findStrToken (char *str, const char *token, uint8_t checkTy
 #define getStrToken(str, token) findStrToken (str, token, GET_TOKEN)
 
 #if CX_USING_TAG_ATTR
-static cx_status_t getNodeAttr (cx_node_t **xmlNode, char **tag)
+static cx_status_t getNodeAttr (cx_node_t *xmlNode, char **tag)
 {
 	cxn_attr_t *curAttr = NULL, *lastAttr = NULL;
-	char *ptr, *tPtr, *tEnd = strchr (*tag, '>');
+	char *ptr, *tPtr, *tEnd;
 
 	if (!(*tag)) {
 		printf ("What String is this?\n");
 		return CX_ERR_BAD_TAG;
+	} else {
+		tEnd = strchr (*tag, '>');
 	}
 
    	tEnd -= (*(tEnd-1) == '/');
@@ -58,11 +55,11 @@ static cx_status_t getNodeAttr (cx_node_t **xmlNode, char **tag)
 	tPtr = *tag;
 	ptr = getStrToken (tPtr, "=");
 	if (!ptr) {
-		printf ("No attributes for %s\n", (*xmlNode)->tagField);
+		printf ("No attributes for %s\n", xmlNode->tagField);
 		return CX_SUCCESS;
 	}
 
-	cx_dec_dbg ("finding attrs for %s\n", (*xmlNode)->tagField);
+	cx_dec_dbg ("finding attrs for %s\n", xmlNode->tagField);
 	do {
 		_cx_calloc (curAttr, sizeof (cxn_attr_t));
 		if (!curAttr) {
@@ -91,54 +88,54 @@ static cx_status_t getNodeAttr (cx_node_t **xmlNode, char **tag)
 		}
 		cx_dec_dbg ("%s ", curAttr->attrValue);
 
-		if (!(*xmlNode)->attrList) {
-			(*xmlNode)->attrList = curAttr;
+		if (!xmlNode->attrList) {
+			xmlNode->attrList = curAttr;
 		} else {
 			lastAttr->next = curAttr;
 		}
 		lastAttr = curAttr;
 
-		(*xmlNode)->numOfAttr++;
+		xmlNode->numOfAttr++;
 		SKIP_LETTERS(ptr);
 		SKIP_SPACES(ptr);
 		tPtr = ptr;
 	} while ((tPtr < tEnd) && (NULL != (ptr = getStrToken (tPtr, "="))));
 
-	cx_dec_dbg (" | attr listed for: %s\n", (*xmlNode)->tagField);
+	cx_dec_dbg (" | attr listed for: %s\n", xmlNode->tagField);
 	*tag = tEnd;
 
 	return CX_SUCCESS;
 }
 #endif
 
-static void populateNodeInTree (cx_node_t **prevNode, cx_node_t **curNode)
+static void populateNodeInTree (cx_node_t *prevNode, cx_node_t *curNode)
 {
-	if (*prevNode) {
-		if ((*prevNode)->nodeType == CXN_PARENT) {
+	if (prevNode) {
+		if (prevNode->nodeType == CXN_PARENT) {
 			cx_dec_dbg ("add as child\n");
-			if (!(*prevNode)->children) {
+			if (!prevNode->children) {
 				cx_dec_dbg ("1st child\n");
-				(*prevNode)->children = (*curNode);
-				(*prevNode)->lastChild = (*curNode);
+				prevNode->children = curNode;
 			} else {
-				cx_node_t *link = (*prevNode)->children;
-				for (; link->next; link = link->next);
-				link->next = (*curNode);
+				prevNode->lastChild->next = curNode;
 			}
-			(*curNode)->parent = (*prevNode);
-			cx_dec_dbg ("%s child to %s\n", (*curNode)->tagField, (*curNode)->parent->tagField);
+			prevNode->lastChild = curNode;
+			curNode->parent = prevNode;
+			cx_dec_dbg ("%s child to %s\n", curNode->tagField, curNode->parent->tagField);
 		} else {
-			(*prevNode)->next = (*curNode);
-			(*curNode)->parent = (*prevNode)->parent;
-			cx_dec_dbg ("%s next to %s\n", (*prevNode)->next->tagField, (*prevNode)->tagField);
+			prevNode->next = curNode;
+			prevNode->parent->lastChild = curNode;
+			curNode->parent = prevNode->parent;
+			cx_dec_dbg ("%s next to %s\n", prevNode->next->tagField, prevNode->tagField);
 		}
 	}
 }
 
-static cx_status_t 
-getNodeFromNewTag (cx_node_t **prevNode, cx_node_t **curNode, cxn_type_t nodeType)
+static cx_status_t getNodeFromNewTag (cx_node_t *prevNode, cx_node_t **curNode, cxn_type_t nodeType, char **_decPtr)
 {
+	char *decPtr = *_decPtr;
 	char *tPtr = decPtr;
+	char *tagField;
 
 	_cx_calloc ((*curNode), sizeof (cx_node_t));
 	if (!(*curNode)) {
@@ -160,33 +157,42 @@ getNodeFromNewTag (cx_node_t **prevNode, cx_node_t **curNode, cxn_type_t nodeTyp
 				goto OFF_TAG;
 			}
 			/*copy name to tagField*/
-			(*curNode)->tagField = _cx_strndup (tPtr, \
+			tagField = _cx_strndup (tPtr, \
 					(size_t)(decPtr - tPtr), "Parent");
 			break;
 #if CX_USING_COMMENTS
 		case CXN_COMMENT:
 			cx_dec_dbg ("COMMENT\n");
-			(*curNode)->tagField = getStrToken (decPtr, "-->");
+			tagField = getStrToken (decPtr, "-->");
 			decPtr = strstr (decPtr, "-->") + 2;
 			break;
 #endif
 #if CX_USING_CDATA
 		case CXN_CDATA:
 			cx_dec_dbg ("CDATA\n");
-			(*curNode)->tagField = getStrToken (decPtr, "]]>");
+			tagField = getStrToken (decPtr, "]]>");
 			decPtr = strstr (decPtr, "]]>") + 2;
 			break;
 #endif
 #if CX_USING_INSTR
 		case CXN_INSTR:
 			cx_dec_dbg ("INSTR\n");
-			(*curNode)->tagField = getStrToken (decPtr, "?>");
-			decPtr = strstr (decPtr, "?>") + 2;
+			tagField = getStrToken (decPtr, "?>");
+			decPtr = strstr (decPtr, "?>") + 1; /*We want decPtr at '>' for now -FIXME*/
+#if 1
+			/*Just discard any allocations in case it's INSTR tag for now!*/
+			*_decPtr = decPtr;
+			_cx_free (tagField);
+			_cx_free (*curNode);
+			return CX_SUCCESS;
+#else
+			/*Fill-up xml version and parsing details -TODO*/
+#endif
 			break;
 #endif
 		case CXN_CONTENT:
 			cx_dec_dbg ("CONTENT\n");
-			(*curNode)->tagField = getStrToken (decPtr, "<");
+			tagField = getStrToken (decPtr, "<");
 			decPtr = strchr (decPtr, '<');
 			break;
 		case CXN_SINGLE: /*we won't have this ever, but have fail-safe*/
@@ -198,26 +204,28 @@ getNodeFromNewTag (cx_node_t **prevNode, cx_node_t **curNode, cxn_type_t nodeTyp
 			return CX_ERR_BAD_NODETYPE;
 	}
 
-	if (!(*curNode)->tagField) {
+	if (!tagField) {
 		printf ("tagField memory error\n");
 OFF_TAG:
 		_cx_free ((*curNode));
 		return CX_ERR_ALLOC;
 	}
 
+	(*curNode)->tagField = tagField;
 	(*curNode)->nodeType = nodeType;
+	*_decPtr = decPtr;
 
-	populateNodeInTree (prevNode, curNode);
+	populateNodeInTree (prevNode, *curNode);
 
 	return CX_SUCCESS;
 }
 
-static cx_status_t dec_buildXmlTree (cx_node_t **xmlNode)
+static cx_status_t cx_BuildTreeFromXmlString (cx_cookie_t *cookie)
 {
-	cx_node_t *curNode = NULL, *prevNode = NULL;
+	cx_node_t *curNode = NULL;
+	cx_node_t *prevNode = NULL;
+	char *decPtr = cookie->xs;
 	cx_status_t status;
-
-	(*xmlNode) = NULL;
 
 NEW_TAG:
 	SKIP_SPACES(decPtr);
@@ -290,24 +298,31 @@ NEW_TAG:
 		}
 
 		/*a new tag begins*/
-		status = getNodeFromNewTag (&prevNode, &curNode, type);
+		status = getNodeFromNewTag (prevNode, &curNode, type, &decPtr);
 		if (CX_SUCCESS != status) {
 			printf ("node addition failed\n");
 			return status;
 		}
+#if CX_USING_INSTR
+		if (!curNode) {
+			/*It's INSTR Node, just don't do anything for this*/
+			cx_dec_dbg ("Skipping INSTR type node for now..\n");
+			goto TAG_ENDER;
+		}
+#endif
 
-		(*xmlNode) = !(*xmlNode)?curNode:(*xmlNode);
+		cookie->root = (cookie->root) ? cookie->root : curNode;
 		prevNode = curNode;
 
 		/*Now decPtr points to <space> or '/' or '>'*/
 		cx_dec_dbg ("node: %s\n", curNode->tagField);
 	} else {
-		if ((size_t)(decPtr - decBasePtr) == strlen (decBasePtr)) {
+		if ((size_t)(decPtr - cookie->xs) == strlen (cookie->xs)) {
 			cx_dec_dbg ("DONE!!\n");
 			return CX_SUCCESS;
 		}
 		/*we have a content of parent now.. not a child*/
-		status = getNodeFromNewTag (&prevNode, &curNode, CXN_CONTENT);
+		status = getNodeFromNewTag (prevNode, &curNode, CXN_CONTENT, &decPtr);
 		if (CX_SUCCESS != status) {
 				printf ("content node addition failed\n");
 				return status;
@@ -318,6 +333,9 @@ NEW_TAG:
 		goto NEW_TAG;
 	}
 
+#if CX_USING_INSTR
+TAG_ENDER:
+#endif
 	SKIP_SPACES(decPtr);
 	if (*decPtr == '>') { /*Seems tag name ended*/
 		/*this parent might have children/content/both/end-of-itself*/
@@ -329,7 +347,7 @@ NEW_TAG:
 	} else if ((curNode->nodeType == CXN_PARENT)) {
 #if CX_USING_TAG_ATTR
 		/*if we have attributes, get them*/
-		status = getNodeAttr (&curNode, &decPtr);
+		status = getNodeAttr (curNode, &decPtr);
 		if (CX_SUCCESS != status) {
 			printf ("Erroneous attribute attempted!\n");
 			return status;
@@ -356,42 +374,30 @@ SELF_TAG:
 	goto NEW_TAG;
 }
 
-cx_status_t decode_xml_pkt (char *str, cx_node_t **xmlNode)
+cx_status_t cx_DecPkt (void **_cookie, char *str)
 {
-	char *xStr = str;
-
-	if (!xStr || (strlen (xStr) >= MAX_RX_XML_PKT_SIZE)) {
+	cx_status_t xStatus;
+	cx_cookie_t *cookie;
+	if (!str || (strlen (str) >= CX_MAX_DEC_STR_SZ)) {
 		printf ("Invalid packet\n");
 		return CX_FAILURE;
 	}
 
-	if ((*xStr != '<') && !(xStr = strchr (xStr, '<'))) {
+	if ((*str != '<') && !(str = strchr (str, '<'))) {
 		printf ("No XML start-tag\n");
 		return CX_FAILURE;
 	}
 
-	decPtr = decBasePtr = xStr;
+	_cx_calloc (cookie, sizeof (*cookie));
+	cx_null_lassert (cookie);
 
-	if (rootNode) {
-	    cx_destroyTree ();
-	}
+	cookie->xs = str;
 
-	if (CX_SUCCESS != dec_buildXmlTree (xmlNode)) {
-	    cx_destroyTree ();
+	if (CX_SUCCESS != cx_BuildTreeFromXmlString (cookie)) {
+	    _cx_destroyTree (cookie);
 		return CX_FAILURE;
 	}
 
-	rootNode = *xmlNode;
-#if 0
-	{
-	/* To confirm decode operation is successful, 
-	 * compare the following encoded buffer with the 'str' passed to decoder*/
-		char *ptr;
-		if (!encode_xml_pkt (&ptr)) {
-			printf ("xmlBuf: %s\r\n", ptr);
-		}
-	}
-#endif
-
-	return CX_SUCCESS;
+CX_ERR_LBL:
+	return xStatus;
 }
