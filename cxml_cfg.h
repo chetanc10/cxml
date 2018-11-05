@@ -6,10 +6,12 @@
 #define CX_MAX_ENC_STR_SZ 2048
 #define CX_MAX_DEC_STR_SZ 3096
 
-/* define as 1 if debug prints are needed in xml_encoder.c */
+/* define as 1 if debug prints are needed in cxml_enc.c */
 #define CX_ENC_DBG_EN 0
-/* define as 0 if debug prints are needed in xml_decoder.c */
+/* define as 0 if debug prints are needed in cxml_dec.c */
 #define CX_DEC_DBG_EN 0
+/* define as 0 if debug prints are needed in cxml_common.c */
+#define CX_COM_DBG_EN 0
 
 /* if error prints not needed, define as 0 */
 #define CX_ERR_PRINT_ALLOWED 1

@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
 
 #include "cxml_cfg.h"
@@ -107,46 +108,6 @@ typedef struct cx_cookie_s {
 #define _cx_free(ptr) \
 	do { if (ptr) { free (ptr); ptr = NULL; } } while (0)
 
-/**
- * @func   : _cx_strndup
- * @brief  : safely duplicate a source string using length limits specified
- * @called : called to duplicate an existing string into a memory from heap
- * @input  : char *src - src string ptr
- *           size_t maxLen - maximum allowed length to use during duplication
- *           char *dName - name to relate to duplicated buffer
- * @output : none
- * @return : NULL - Failure or for NULL src or 0 sized src
- *           < 0 - for different failure conditions
- */
-static inline char *_cx_strndup (char *src, size_t maxLen, char *dName)
-{
-	char *dest = NULL;
-	size_t dLen, sLen;
-
-	if (!src || !(sLen = strlen (src))) {
-		return NULL;
-	}
-
-	dLen = ((sLen < maxLen) ? sLen : maxLen);
-
-	_cx_calloc (dest, dLen + 1); /*+1 for NULL char to end-string*/
-
-	if (dest)
-		strncpy (dest, src, dLen);
-	else
-		printf ("%s: Allocating %s: %s\n", __func__, dName, strerror (errno));
-
-	return dest;
-}
-
-/**
- * @func   : _cx_destroyTree
- * @brief  : destroys a given xml tree
- * @called : when this xml tree is no longer required
- * @input  : cx_cookie_t *cookie - pointer to select xml-context
- * @output : none
- * @return : void
- */
-void _cx_destroyTree (cx_cookie_t *cookie);
+char *_cx_strndup (char *src, size_t maxLen, char *dName);
 
 #endif /*__CXML_H*/

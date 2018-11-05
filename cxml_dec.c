@@ -394,7 +394,6 @@ cx_status_t cx_DecPkt (void **_cookie, char *str)
 	cookie->xs = str;
 
 	if (CX_SUCCESS != cx_BuildTreeFromXmlString (cookie)) {
-	    _cx_destroyTree (cookie);
 		return CX_FAILURE;
 	}
 
