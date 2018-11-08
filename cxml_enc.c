@@ -167,7 +167,7 @@ cx_status_t cx_EncPkt (void *_cookie, char **xmlData)
 	}
 
 	if (!cookie->xsIsFromUser && (xStatus == CX_SUCCESS)) {
-		cx_null_lassert (xmlData);
+		cx_null_lfail (xmlData);
 		*xmlData = (xStatus == CX_SUCCESS) ? cookie->xs : NULL;
 	}
 
@@ -335,31 +335,31 @@ cx_status_t _cx_AddNode (void *_cookie, const char *new, cxn_type_t nodeType, co
 	cx_node_t *prevNode;
 	cx_status_t xStatus = CX_SUCCESS;
 
-	cx_lassert (IS_INVALID_NODE_TYPE(nodeType), CX_ERR_BAD_NODE, "Invalid nodeType\n");
+	cx_lfail (IS_INVALID_NODE_TYPE(nodeType), CX_ERR_BAD_NODE, "Invalid nodeType\n");
 
-	cx_null_lassert (new);
+	cx_null_lfail (new);
 
-	cx_lassert (BAD_ADDTYPE_VAL(addType), CX_ERR_BAD_NODE, "Invalid addType\n");
+	cx_lfail (BAD_ADDTYPE_VAL(addType), CX_ERR_BAD_NODE, "Invalid addType\n");
 
 	cx_enc_dbg ("newNode: %s\r\n", new);
 
 	_cx_calloc (newNode, sizeof (cx_node_t));
-	cx_null_lassert (newNode);
+	cx_null_lfail (newNode);
 
 	newNode->tagField = _cx_strndup ((char *)new, strlen (new), (char *)new);
-	cx_null_lassert (newNode->tagField);
+	cx_null_lfail (newNode->tagField);
 
 	newNode->nodeType = nodeType;
 
 	if (addType == CXADD_FIRST) {
-		cx_lassert ((cookie->root != NULL), CX_ERR_FIRST_NODE, "First node already filled!");
+		cx_lfail ((cookie->root != NULL), CX_ERR_FIRST_NODE, "First node already filled!");
 		/*Xml Origins: root-node*/
 		cookie->root = cookie->recent = newNode;
 		cx_enc_dbg ("\"%s\" is root-node\n", newNode->tagField);
 		return CX_SUCCESS;
 	}
 
-	cx_null_lassert (addTo);
+	cx_null_lfail (addTo);
 
 	prevNode = cookie->recent;
 

@@ -117,12 +117,12 @@ cx_status_t cx_CreateSession (void **_cookie, char *name, char *uxs, uint32_t in
 	cx_status_t xStatus = CX_SUCCESS;
 	cx_cookie_t *cookie;
 
-	cx_null_lassert (_cookie);
-	cx_lassert ((initXmlLength >= CX_MAX_ENC_STR_SZ), \
+	cx_null_lfail (_cookie);
+	cx_lfail ((initXmlLength >= CX_MAX_ENC_STR_SZ), \
 			CX_ERR_ENC_OVERFLOW, "Requested initXmlLength out of bounds!");
 
 	_cx_calloc (cookie, sizeof (cx_cookie_t));
-	cx_null_lassert (cookie);
+	cx_null_lfail (cookie);
 
 	cookie->cxCode = CX_COOKIE_MAGIC;
 	strncpy (cookie->name, name ? name : "unknown", CX_COOKIE_NAMELEN);

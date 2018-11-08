@@ -14,25 +14,25 @@ int encode_data_in_xml (void)
 	cx_status_t xStatus;
 	char *ptr_xmlBuf = xmlBuf;
 
-	cx_func_lassert (cx_CreateSession (&encCookie, "demo-cxml", ptr_xmlBuf, 0), "XML encoder session creation");
-	cx_func_lassert (cx_AddFirstNode (encCookie, "x", CXN_PARENT), "add: x");
-	cx_func_lassert (cx_AddAttr_STR (encCookie, "xmlns:xinclude", \
+	cx_func_lfail (cx_CreateSession (&encCookie, "demo-cxml", ptr_xmlBuf, 0), "XML encoder session creation");
+	cx_func_lfail (cx_AddFirstNode (encCookie, "x", CXN_PARENT), "add: x");
+	cx_func_lfail (cx_AddAttr_STR (encCookie, "xmlns:xinclude", \
 				"http://www.w3.org/2001/XInclude", "x"), "add: xmlns-attr");
-	cx_func_lassert (cx_AddCommentNode (encCookie, "Simple test of XML Encoding", \
+	cx_func_lfail (cx_AddCommentNode (encCookie, "Simple test of XML Encoding", \
 				"x", CXADD_CHILD), "add: x comment");
-	cx_func_lassert (cx_AddParentNode (encCookie, "p", "x", CXADD_CHILD), "add: p");
-	cx_func_lassert (cx_AddAttr_STR (encCookie, "xml:base", \
+	cx_func_lfail (cx_AddParentNode (encCookie, "p", "x", CXADD_CHILD), "add: p");
+	cx_func_lfail (cx_AddAttr_STR (encCookie, "xml:base", \
 				"../ents/something.xml", "p"), "add: xmlns-attr");
-	cx_func_lassert (cx_AddContentNode (encCookie, "simple", \
+	cx_func_lfail (cx_AddContentNode (encCookie, "simple", \
 				"p", CXADD_CHILD), "add: p content");
 #if 1
-	cx_func_lassert (cx_AddParentNode (encCookie, "q", \
+	cx_func_lfail (cx_AddParentNode (encCookie, "q", \
 				"p", CXADD_NEXT), "add: q-next-to-p");
 #else
-	cx_func_lassert (cx_AddParentNode (encCookie, "q", \
+	cx_func_lfail (cx_AddParentNode (encCookie, "q", \
 				"x", CXADD_CHILD), "add: p");
 #endif
-	cx_func_lassert (cx_AddContentNode (encCookie, "sample", \
+	cx_func_lfail (cx_AddContentNode (encCookie, "sample", \
 				"q", CXADD_CHILD), "add: q content");
 
 	if (cx_EncPkt (encCookie, NULL)) {

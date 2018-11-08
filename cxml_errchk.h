@@ -10,17 +10,17 @@
 #define _cx_pr_err(...)
 #endif
 
-#define cx_lassert(failed, errCode, err) \
+#define cx_lfail(failed, errCode, err) \
 	do { \
 		if (failed) { \
 			_cx_pr_err (err); xStatus = errCode; goto CX_ERR_LBL; \
 		} \
 	} while (0)
 
-#define cx_func_lassert(function, err) \
-	cx_lassert ((CX_SUCCESS != (xStatus = function)), xStatus, err)
+#define cx_func_lfail(function, err) \
+	cx_lfail ((CX_SUCCESS != (xStatus = function)), xStatus, err)
 
-#define cx_null_lassert(ptr) \
-	cx_lassert ((NULL == ptr), CX_ERR_ALLOC, "Null Buffer: "#ptr)
+#define cx_null_lfail(ptr) \
+	cx_lfail ((NULL == ptr), CX_ERR_ALLOC, "Null Buffer: "#ptr)
 
 #endif /*__CXML_ERRCHK_H*/

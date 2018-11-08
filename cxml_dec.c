@@ -389,7 +389,7 @@ cx_status_t cx_DecPkt (void **_cookie, char *str)
 	}
 
 	_cx_calloc (cookie, sizeof (*cookie));
-	cx_null_lassert (cookie);
+	cx_null_lfail (cookie);
 
 	cookie->xs = str;
 
