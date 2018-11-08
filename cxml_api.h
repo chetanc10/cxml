@@ -221,7 +221,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_AddAttr_CHAR(_cookie, attrname, attrValue, node) \
-    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_CHAR, node)
+    _cx_AddAttrToNode (_cookie, attrname, \
+			(cxa_value_u *)&attrValue, CXATTR_CHAR, node)
 
 /**
  * @func   : cx_AddAttr_STR
@@ -236,7 +237,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_AddAttr_STR(_cookie, attrname, attrValue, node) \
-    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)attrValue, CXATTR_STR, node)
+    _cx_AddAttrToNode (_cookie, attrname, \
+			(cxa_value_u *)attrValue, CXATTR_STR, node)
 
 /**
  * @func   : cx_AddAttr_ui8
@@ -251,7 +253,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_AddAttr_ui8(_cookie, attrname, attrValue, node) \
-    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_UI8, node)
+    _cx_AddAttrToNode (_cookie, attrname, \
+			(cxa_value_u *)&attrValue, CXATTR_UI8, node)
 
 /**
  * @func   : cx_AddAttr_si8
@@ -266,7 +269,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_AddAttr_si8(_cookie, attrname, attrValue, node) \
-    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_SI8, node)
+    _cx_AddAttrToNode (_cookie, attrname, \
+			(cxa_value_u *)&attrValue, CXATTR_SI8, node)
 
 /**
  * @func   : cx_AddAttr_ui16
@@ -281,7 +285,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_AddAttr_ui16(_cookie, attrname, attrValue, node) \
-    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_UI16, node)
+    _cx_AddAttrToNode (_cookie, attrname, \
+			(cxa_value_u *)&attrValue, CXATTR_UI16, node)
 
 /**
  * @func   : cx_AddAttr_si16
@@ -296,7 +301,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_AddAttr_si16(_cookie, attrname, attrValue, node) \
-    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_SI16, node)
+    _cx_AddAttrToNode (_cookie, attrname, \
+			(cxa_value_u *)&attrValue, CXATTR_SI16, node)
 
 /**
  * @func   : cx_AddAttr_ui32
@@ -311,7 +317,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_AddAttr_ui32(_cookie, attrname, attrValue, node) \
-    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_UI32, node)
+    _cx_AddAttrToNode (_cookie, attrname, \
+			(cxa_value_u *)&attrValue, CXATTR_UI32, node)
 
 /**
  * @func   : cx_AddAttr_si32
@@ -326,7 +333,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_AddAttr_si32(_cookie, attrname, attrValue, node) \
-    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_SI32, node)
+    _cx_AddAttrToNode (_cookie, attrname, \
+			(cxa_value_u *)&attrValue, CXATTR_SI32, node)
 
 /**
  * @func   : cx_AddAttr_float
@@ -341,7 +349,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           CX_ERR_ALLOC/CX_FAILURE
  */
 #define cx_AddAttr_float(_cookie, attrname, attrValue, node) \
-    _cx_AddAttrToNode (_cookie, attrname, (cxa_value_u *)&attrValue, CXATTR_FLOAT, node)
+    _cx_AddAttrToNode (_cookie, attrname, \
+			(cxa_value_u *)&attrValue, CXATTR_FLOAT, node)
 
 #if CX_USING_TAG_ATTR
 cx_status_t _cx_AddAttrToNode (void *_cookie, char *attrName, cxa_value_u *value, cxattr_type_t type, char *node);
@@ -351,10 +360,10 @@ cx_status_t _cx_AddAttrToNode (void *_cookie, char *attrName, cxa_value_u *value
  * @func   : cx_CreateSession
  * @brief  : Create new session for xml operations and give out session cookie
  * @called : when new xml operation is required
- * @input  : char *name - name identofying the purpose of this session
+ * @input  : char *name - name identifying the purpose of this session
  *           char *uxs - optional string pointer for encoder to from xml string
- *           initXmlLength - Only if uxs is valid, takes an initial length, else don't care
- * @output : void *_cookie - pointer to xml-context after successful session setup
+ *           initXmlLength - Iff uxs is valid, gives an initial length
+ * @output : void *_cookie - pointer to xml-context after proper session setup
  * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
  *           CX_ERR_ALLOC/CX_FAILURE
  */

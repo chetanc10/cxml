@@ -11,7 +11,8 @@
 
 #pragma pack(1)
 
-/*Modifying cx_def_fmts and cx_def_sizes requires modifying enum for data types - cxattr_type_t;
+/* Modifying cx_def_fmts and cx_def_sizes requires
+ * modifying enum for data types - cxattr_type_t;
  * ensure proper format specifiers while encoding different data in xml*/
 #define _cx_def_fmts_array(arr) \
 	char arr[CXATTR_MAX][4] = { \
@@ -52,25 +53,38 @@ typedef struct cx_node_s {
     struct cx_node_s    *parent;
 #if CX_USING_TAG_ATTR
     uint8_t             numOfAttr;
-    cxn_attr_t          *attrList;/*Save a tail-ptr to speedup attribute additions -TODO*/
+    cxn_attr_t          *attrList;/*Save tail-ptr to speedup additions -TODO*/
 #endif
     struct cx_node_s    *children;
     struct cx_node_s    *lastChild;
     struct cx_node_s    *next;
 } __attribute__((__packed__)) cx_node_t;
 
+/**
+ * Structure used inside cxml library to identify particular user-cookie to
+ * handle corresposing session encode/decode sequence
+ * cxCode - Fixed magic number to validate the cookie user has given
+ * name - name of the cookie  e.g. light-ctrl, high temp events, etc
+ * root - root node of the tree built
+ * recent - stores the most recently processed node
+ * xmlLength - xmlLength & xstr store all tag/attr strings -TODO
+ * uxsLength - user buffer xmlLength & xstr store all tag/attr strings
+ * xsIsFromUserR - Indicates if xs is pointing to user-buffer
+ * xc - stores all node/attr contents -TODO
+ * xs - stores actual xml string
+ */
 typedef struct cx_cookie_s {
 #define CX_COOKIE_MAGIC   0x00C0FFEE
-	uint32_t            cxCode; /*Fixed magic number*/
+	uint32_t            cxCode;
 #define CX_COOKIE_NAMELEN 32
-	char                name[CX_COOKIE_NAMELEN]; /*Name of the context. e.g. light-ctrl, high temp events, etc*/
+	char                name[CX_COOKIE_NAMELEN];
 	cx_node_t           *root;
-	cx_node_t           *recent; /*stores the most recently processed node*/
-	uint32_t            xmlLength; /*xmlLength & xstr store all tag/attr strings -TODO*/
-	uint32_t            uxsLength; /*user buffer xmlLength & xstr store all tag/attr strings -TODO*/
-	int                 xsIsFromUser; /*Indicates if xs is pointing to user-buffer*/
-	char                *xc; /*stores all node/attr contents -TODO*/
-	char                *xs; /*stores actual xml string -TODO*/
+	cx_node_t           *recent;
+	uint32_t            xmlLength;
+	uint32_t            uxsLength;
+	int                 xsIsFromUser;
+	char                *xc;
+	char                *xs;
 } cx_cookie_t;
 
 /**

@@ -15,7 +15,8 @@
 
 #define SKIP_SPACES(ptr) while (ptr && isspace ((int)*ptr)) { ptr++; }
 #define SKIP_LETTERS(ptr) \
-	while (ptr && *ptr && !isspace ((int)*ptr) && (*ptr !='/') && (*ptr !='>')) { ptr++; }
+	while (ptr && *ptr && \
+			!isspace ((int)*ptr) && (*ptr !='/') && (*ptr !='>')) { ptr++; }
 
 #define BET_TOKEN 0x01
 #define GET_TOKEN 0x02
@@ -121,12 +122,14 @@ static void populateNodeInTree (cx_node_t *prevNode, cx_node_t *curNode)
 			}
 			prevNode->lastChild = curNode;
 			curNode->parent = prevNode;
-			cx_dec_dbg ("%s child to %s\n", curNode->tagField, curNode->parent->tagField);
+			cx_dec_dbg ("%s child to %s\n", \
+					curNode->tagField, curNode->parent->tagField);
 		} else {
 			prevNode->next = curNode;
 			prevNode->parent->lastChild = curNode;
 			curNode->parent = prevNode->parent;
-			cx_dec_dbg ("%s next to %s\n", prevNode->next->tagField, prevNode->tagField);
+			cx_dec_dbg ("%s next to %s\n", \
+					prevNode->next->tagField, prevNode->tagField);
 		}
 	}
 }
@@ -178,7 +181,8 @@ static cx_status_t getNodeFromNewTag (cx_node_t *prevNode, cx_node_t **curNode, 
 		case CXN_INSTR:
 			cx_dec_dbg ("INSTR\n");
 			tagField = getStrToken (decPtr, "?>");
-			decPtr = strstr (decPtr, "?>") + 1; /*We want decPtr at '>' for now -FIXME*/
+			/*We want decPtr at '>' for now -FIXME*/
+			decPtr = strstr (decPtr, "?>") + 1;
 #if 1
 			/*Just discard any allocations in case it's INSTR tag for now!*/
 			*_decPtr = decPtr;
@@ -256,7 +260,8 @@ NEW_TAG:
 			}
 
 			if ((strlen (tName) != (size_t)(ptr - decPtr)) || \
-					(CX_SUCCESS != strncmp (tName, decPtr, (size_t)(ptr-decPtr)))) {
+					(CX_SUCCESS != strncmp (tName, decPtr, \
+											(size_t)(ptr-decPtr)))) {
 				printf ("NODE Mismatch at closing-tag: %s\n", tName);
 				return CX_ERR_BAD_TAG;
 			}

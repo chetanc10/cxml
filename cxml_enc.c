@@ -316,11 +316,12 @@ cx_status_t _cx_AddAttrToNode (void *_cookie, char *attrName, cxa_value_u *value
  * @called : when populating tree with a new node as child/next/first
  * @input  : char *new - tagField for tagName/content/cdata/comment
  *           char *addTo - tagField for previous node to which new one is added
- *                       This is required so that user can properly populate nodes
+ *                       Required so that user can properly populate nodes
  *           cxn_type_t nodeType - type of new node
  *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
+ * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/
+ * 			 CX_ERR_NULL_MEM/CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
  */
 cx_status_t _cx_AddNode (void *_cookie, const char *new, cxn_type_t nodeType, const char *addTo, cx_Addtype_t addType)
 {
@@ -335,11 +336,13 @@ cx_status_t _cx_AddNode (void *_cookie, const char *new, cxn_type_t nodeType, co
 	cx_node_t *prevNode;
 	cx_status_t xStatus = CX_SUCCESS;
 
-	cx_lfail (IS_INVALID_NODE_TYPE(nodeType), CX_ERR_BAD_NODE, "Invalid nodeType\n");
+	cx_lfail (IS_INVALID_NODE_TYPE(nodeType), \
+			CX_ERR_BAD_NODE, "Invalid nodeType\n");
 
 	cx_null_lfail (new);
 
-	cx_lfail (BAD_ADDTYPE_VAL(addType), CX_ERR_BAD_NODE, "Invalid addType\n");
+	cx_lfail (BAD_ADDTYPE_VAL(addType), \
+			CX_ERR_BAD_NODE, "Invalid addType\n");
 
 	cx_enc_dbg ("newNode: %s\r\n", new);
 
@@ -352,7 +355,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *new, cxn_type_t nodeType, co
 	newNode->nodeType = nodeType;
 
 	if (addType == CXADD_FIRST) {
-		cx_lfail ((cookie->root != NULL), CX_ERR_FIRST_NODE, "First node already filled!");
+		cx_lfail ((cookie->root != NULL), \
+				CX_ERR_FIRST_NODE, "First node already filled!");
 		/*Xml Origins: root-node*/
 		cookie->root = cookie->recent = newNode;
 		cx_enc_dbg ("\"%s\" is root-node\n", newNode->tagField);
@@ -365,7 +369,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *new, cxn_type_t nodeType, co
 
 	if (CX_SUCCESS != strcmp (addTo, prevNode->tagField)) {
 	   	if (CX_SUCCESS == strcmp (addTo, prevNode->parent->tagField)) {
-			cx_enc_dbg ("adding %s to a prev parent: %s\n", new, prevNode->parent->tagField);
+			cx_enc_dbg ("adding %s to a prev parent: %s\n", \
+					new, prevNode->parent->tagField);
 			prevNode = prevNode->parent;
 		} else {
 			printf ("don't know :%s..%s..%s\n", addTo, new, prevNode->tagField);
@@ -388,7 +393,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *new, cxn_type_t nodeType, co
 		newNode->parent = prevNode;
 	} else {
 		if (prevNode->next) {
-			printf ("%s has already got a node next to it!\n", prevNode->tagField);
+			printf ("%s has already got a node next to it!\n", \
+					prevNode->tagField);
 			xStatus = CX_ERR_BAD_NODE;
 			goto CX_ERR_LBL;
 		}

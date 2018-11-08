@@ -14,13 +14,16 @@ int encode_data_in_xml (void)
 	cx_status_t xStatus;
 	char *ptr_xmlBuf = xmlBuf;
 
-	cx_func_lfail (cx_CreateSession (&encCookie, "demo-cxml", ptr_xmlBuf, 0), "XML encoder session creation");
+	cx_func_lfail (cx_CreateSession (&encCookie, "demo-cxml", ptr_xmlBuf, 0), \
+			"XML encoder session creation");
 	cx_func_lfail (cx_AddFirstNode (encCookie, "x", CXN_PARENT), "add: x");
 	cx_func_lfail (cx_AddAttr_STR (encCookie, "xmlns:xinclude", \
 				"http://www.w3.org/2001/XInclude", "x"), "add: xmlns-attr");
-	cx_func_lfail (cx_AddCommentNode (encCookie, "Simple test of XML Encoding", \
+	cx_func_lfail (cx_AddCommentNode (encCookie, \
+				"Simple test of XML Encoding", \
 				"x", CXADD_CHILD), "add: x comment");
-	cx_func_lfail (cx_AddParentNode (encCookie, "p", "x", CXADD_CHILD), "add: p");
+	cx_func_lfail (cx_AddParentNode (encCookie, \
+				"p", "x", CXADD_CHILD), "add: p");
 	cx_func_lfail (cx_AddAttr_STR (encCookie, "xml:base", \
 				"../ents/something.xml", "p"), "add: xmlns-attr");
 	cx_func_lfail (cx_AddContentNode (encCookie, "simple", \
