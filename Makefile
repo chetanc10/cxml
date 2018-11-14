@@ -1,6 +1,10 @@
 
+CFLAGS := -Wall
+CFLAGS += -O0
+CFLAGS += -g
+
 all:
-	gcc *.c
+	gcc ${CFLAGS} *.c
 
 clean:
 	rm -rf a.out *.o

@@ -25,4 +25,8 @@
 #define CX_USING_INSTR    1
 #define CX_USING_TAG_ATTR 1
 
+/*define the system relevant printf-or-alike function for logging here*/
+/*defaulting to gcc library's printf*/
+#define SysPrintf printf
+
 #endif /*__CXML_CFG_H*/

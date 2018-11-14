@@ -11,43 +11,42 @@ char xmlBuf[1024];
 int encode_data_in_xml (void)
 {
 	int ret = 0;
-	cx_status_t xStatus;
+	cx_status_t xStatus = CX_SUCCESS;
 	char *ptr_xmlBuf = xmlBuf;
 
-	cx_func_lfail (cx_CreateSession (&encCookie, "demo-cxml", ptr_xmlBuf, 0), \
-			"XML encoder session creation");
-	cx_func_lfail (cx_AddFirstNode (encCookie, "x", CXN_PARENT), "add: x");
-	cx_func_lfail (cx_AddAttr_STR (encCookie, "xmlns:xinclude", \
-				"http://www.w3.org/2001/XInclude", "x"), "add: xmlns-attr");
-	cx_func_lfail (cx_AddCommentNode (encCookie, \
-				"Simple test of XML Encoding", \
-				"x", CXADD_CHILD), "add: x comment");
-	cx_func_lfail (cx_AddParentNode (encCookie, \
-				"p", "x", CXADD_CHILD), "add: p");
-	cx_func_lfail (cx_AddAttr_STR (encCookie, "xml:base", \
-				"../ents/something.xml", "p"), "add: xmlns-attr");
-	cx_func_lfail (cx_AddContentNode (encCookie, "simple", \
-				"p", CXADD_CHILD), "add: p content");
+	cxa_func_lfail (cx_CreateSession (&encCookie, "CXML_DEMO_ENCODE", \
+				ptr_xmlBuf, 0), ret, -1, "XML encoder session creation");
+	cxa_func_lfail (cx_AddFirstNode (encCookie, "x", CXN_PARENT), ret, -2, \
+			"add first node: x");
+	cxa_func_lfail (cx_AddAttr_STR (encCookie, "xmlns:xinclude", \
+				"http://www.w3.org/2001/XInclude", "x"), ret, -3, \
+			"add: xmlns-attr");
+	cxa_func_lfail (cx_AddCommentNode (encCookie, \
+				"Simple test of XML Encoding", "x", CXADD_CHILD), \
+			ret, -4, "add: x comment");
+	cxa_func_lfail (cx_AddParentNode (encCookie, "p", "x", CXADD_CHILD), \
+			ret, -5, "add: p");
+	cxa_func_lfail (cx_AddAttr_STR (encCookie, "xml:base", \
+				"../ents/something.xml", "p"), ret, -6, "add: xmlns-attr");
+	cxa_func_lfail (cx_AddContentNode (encCookie, "simple", "p", \
+				CXADD_CHILD), ret, -7, "add: p content");
 #if 1
-	cx_func_lfail (cx_AddParentNode (encCookie, "q", \
-				"p", CXADD_NEXT), "add: q-next-to-p");
+	cxa_func_lfail (cx_AddParentNode (encCookie, "q", "p", CXADD_NEXT), \
+			ret, -8, "add: q-next-to-p");
 #else
-	cx_func_lfail (cx_AddParentNode (encCookie, "q", \
-				"x", CXADD_CHILD), "add: p");
+	cxa_func_lfail (cx_AddParentNode (encCookie, "q", "x", CXADD_CHILD), \
+			ret, -8, "add: q as child to x");
 #endif
-	cx_func_lfail (cx_AddContentNode (encCookie, "sample", \
-				"q", CXADD_CHILD), "add: q content");
+	cxa_func_lfail (cx_AddContentNode (encCookie, "sample", "q", \
+				CXADD_CHILD), ret, -9, "add: q content");
 
-	if (cx_EncPkt (encCookie, NULL)) {
-		printf ("Failed encoding..!\n");
-		ret = -1;
-	} else {
-		printf ("Encoded xml packet:\n%s\n", ptr_xmlBuf);
-	}
+	cxa_func_lfail (cx_EncPkt (encCookie, NULL), ret, -111, "Encoding failed");
 
-CX_ERR_LBL:
+	printf ("Encoded xml packet:\n%s\n", ptr_xmlBuf);
+
+CXA_ERR_LBL:
 	if (xStatus != CX_SUCCESS) {
-		printf ("Failed encoding xml string!\n");
+		printf ("%s\n", cx_strerr (xStatus));
 	}
 	cx_DestroySession (encCookie);
 
@@ -57,10 +56,14 @@ CX_ERR_LBL:
 int decode_data_in_xml (void)
 {
 	int ret = 0;
+	cx_status_t xStatus;
 
-	if (cx_DecPkt (&decCookie, xmlBuf)) {
-		printf ("Failed decoding..!\n");
+	xStatus = cx_DecPkt (&decCookie, xmlBuf, "CXML_DEMO_DECODE");
+	if (xStatus) {
+		printf ("Failed decoding with reason: %s\n", cx_strerr (xStatus));
 		ret = -1;
+	} else {
+		printf ("Decoding Success!\n");
 	}
 
 	cx_DestroySession (decCookie);

@@ -11,15 +11,39 @@
 
 typedef enum {
     CX_SUCCESS = 0,
+
+	/*Buffer/Pointer errors*/
     CX_ERR_ENC_OVERFLOW,
     CX_ERR_DEC_OVERFLOW,
     CX_ERR_ALLOC,
-    CX_ERR_NULL_MEM,
-    CX_ERR_BAD_NODE,
-    CX_ERR_BAD_TAG,
-    CX_ERR_BAD_ATTR,
-    CX_ERR_BAD_NODETYPE,
-    CX_ERR_FIRST_NODE,
+    CX_ERR_NULL_PTR,
+
+	/*Node errors*/
+	CX_ERR_INVALID_NEW_NODE,
+	CX_ERR_INVALID_NODE,
+	CX_ERR_INVALID_ROOT,
+	CX_ERR_NULL_NODENAME,
+	CX_ERR_LONE_ROOT,
+	CX_ERR_NODE_NOT_FOUND,
+	CX_ERR_ROOT_FILLED,
+	CX_ERR_ESTRANGED_NODE,
+	CX_ERR_NEXT_NODE_FILLED,
+
+	/*Attr errors*/
+	CX_ERR_INVALID_ATTR,
+	CX_ERR_NULL_ATTRNAME,
+	CX_ERR_NULL_ATTRVALUE,
+
+	/*Tag errors*/
+    CX_ERR_INVALID_TAG,
+	CX_ERR_LONE_TAG,
+	CX_ERR_UNCLOSED_TAG,
+	CX_ERR_CLOSED_TAG_MISMATCH,
+
+	/*XML string wide errors*/
+    CX_ERR_INVALID_XML,
+
+	/*Unidentified errors*/
     CX_FAILURE,
 } cx_status_t;
 
@@ -76,23 +100,26 @@ typedef union attrValue_union {
  * @func   : cx_EncPkt
  * @brief  : build an xml formatted string from an existing xml-tree
  * @called : when an xml tree is finalised and xml string is needed
- *           to be built from that tree (FIXME add tree-contexts)
+ *           to be built from that tree
  * @input  : void *_cookie - pointer to select xml-context
  * @output : char **xmlData - pointer to store the final xml string 
- * @return : CX_SUCCESS/CX_FAILURE/CX_ERR_ALLOC
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 cx_status_t cx_EncPkt (void *_cookie, char **xmlData);
 
 /**
  * @func   : cx_DecPkt
- * @brief  : build an xml tree from an existing xml-string
+ * @brief  : setup a cookie and build an xml tree from an existing xml-string
  * @called : when a peer sends xml content packet and we need to
  *           validate and parse the same properly to build xml-tree
  * @input  : char *str - existing xml string
+ *           char *name - name of this decoding session cookie 
  * @output : void **_cookie - pointer filled to the freshly created xml-context
- * @return : CX_SUCCESS/CX_FAILURE/CX_ERR_ALLOC
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
-cx_status_t cx_DecPkt (void **_cookie, char *str);
+cx_status_t cx_DecPkt (void **_cookie, char *str, char *name);
 
 /**
  * @func   : cx_AddFirstNode
@@ -102,8 +129,8 @@ cx_status_t cx_DecPkt (void **_cookie, char *str);
  *           char *name - tagField
  *           cxn_type_t nodeType - type of node
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddFirstNode(_cookie, name, nodeType) \
     _cx_AddNode (_cookie, name, nodeType, NULL, CXADD_FIRST)
@@ -117,8 +144,8 @@ cx_status_t cx_DecPkt (void **_cookie, char *str);
  *           char *addTo - name of node to which current node is added
  *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddParentNode(_cookie, name, addTo, addType) \
     _cx_AddNode (_cookie, name, CXN_PARENT, addTo, addType)
@@ -132,8 +159,8 @@ cx_status_t cx_DecPkt (void **_cookie, char *str);
  *           char *addTo - name of node to which current node is added
  *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddSingleNode(_cookie, name, addTo, addType) \
     _cx_AddNode (_cookie, name, CXN_SINGLE, addTo, addType)
@@ -148,8 +175,8 @@ cx_status_t cx_DecPkt (void **_cookie, char *str);
  *           char *addTo - name of node to which current node is added
  *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddCommentNode(_cookie, comment, addTo, addType) \
     _cx_AddNode (_cookie, comment, CXN_COMMENT, addTo, addType)
@@ -166,8 +193,8 @@ cx_status_t cx_DecPkt (void **_cookie, char *str);
  *           char *addTo - name of node to which current node is added
  *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddCDataNode(_cookie, CData, addTo, addType) \
     _cx_AddNode (_cookie, CData, CXN_CDATA, addTo, addType)
@@ -183,8 +210,8 @@ cx_status_t cx_DecPkt (void **_cookie, char *str);
  *           char *addTo - name of node to which current node is added
  *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddInstrNode(_cookie, instr, addTo, addType) \
     _cx_AddNode (_cookie, instr, CXN_INSTR, addTo, addType)
@@ -195,18 +222,18 @@ cx_status_t cx_DecPkt (void **_cookie, char *str);
  * @brief  : adds CONTENT type node to tree
  * @called : when populating tree with a CONTENT type node(just data, no tag)
  * @input  : void *_cookie - pointer to select xml-context
- *           char *content - content string
+ *           const char *new - tag field name
+ *           cxn_type_t nodeType - Type of node
  *           char *addTo - name of node to which current node is added
  *           cx_Addtype_t addType - to add as child/next/first node
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_NODETYPE/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_ERR_BAD_NODE/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddContentNode(_cookie, content, addTo, addType) \
     _cx_AddNode (_cookie, content, CXN_CONTENT, addTo, addType)
 
-cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
-	cxn_type_t nodeType, const char *addTo, cx_Addtype_t addType);
+cx_status_t _cx_AddNode (void *_cookie, const char *new, cxn_type_t nodeType, const char *addTo, cx_Addtype_t addType);
 
 /**
  * @func   : cx_AddAttr_CHAR
@@ -217,8 +244,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddAttr_CHAR(_cookie, attrname, attrValue, node) \
     _cx_AddAttrToNode (_cookie, attrname, \
@@ -233,8 +260,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddAttr_STR(_cookie, attrname, attrValue, node) \
     _cx_AddAttrToNode (_cookie, attrname, \
@@ -249,8 +276,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddAttr_ui8(_cookie, attrname, attrValue, node) \
     _cx_AddAttrToNode (_cookie, attrname, \
@@ -265,8 +292,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddAttr_si8(_cookie, attrname, attrValue, node) \
     _cx_AddAttrToNode (_cookie, attrname, \
@@ -281,8 +308,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddAttr_ui16(_cookie, attrname, attrValue, node) \
     _cx_AddAttrToNode (_cookie, attrname, \
@@ -297,8 +324,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddAttr_si16(_cookie, attrname, attrValue, node) \
     _cx_AddAttrToNode (_cookie, attrname, \
@@ -313,8 +340,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddAttr_ui32(_cookie, attrname, attrValue, node) \
     _cx_AddAttrToNode (_cookie, attrname, \
@@ -329,8 +356,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddAttr_si32(_cookie, attrname, attrValue, node) \
     _cx_AddAttrToNode (_cookie, attrname, \
@@ -345,8 +372,8 @@ cx_status_t _cx_AddNode (void *_cookie, const char *tagField,
  *           cxa_value_u attrValue - union specifying for pre-defined datatype
  *           char *node - tagField of node the attr is added to
  * @output : none
- * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 #define cx_AddAttr_float(_cookie, attrname, attrValue, node) \
     _cx_AddAttrToNode (_cookie, attrname, \
@@ -359,13 +386,13 @@ cx_status_t _cx_AddAttrToNode (void *_cookie, char *attrName, cxa_value_u *value
 /**
  * @func   : cx_CreateSession
  * @brief  : Create new session for xml operations and give out session cookie
- * @called : when new xml operation is required
+ * @called : when new xml encoding session is required, NOT FOR DECODER SESSION
  * @input  : char *name - name identifying the purpose of this session
  *           char *uxs - optional string pointer for encoder to from xml string
  *           initXmlLength - Iff uxs is valid, gives an initial length
  * @output : void *_cookie - pointer to xml-context after proper session setup
- * @return : CX_SUCCESS/CX_ERR_BAD_ATTR/CX_ERR_NULL_MEM/
- *           CX_ERR_ALLOC/CX_FAILURE
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
  */
 cx_status_t cx_CreateSession (void **_cookie, char *name, char *uxs, uint32_t initXmlLength);
 
@@ -378,5 +405,15 @@ cx_status_t cx_CreateSession (void **_cookie, char *name, char *uxs, uint32_t in
  * @return : void
  */
 void cx_DestroySession (void *_cookie);
+
+/**
+ * @func   : cx_strerr
+ * @brief  : returns a string describing a cx_status_t type value
+ * @called : Mostly when application needs to understand/log cxml errors
+ * @input  : cx_status_t cx_st - cxml library returned status
+ * @output : none
+ * @return : pointer to string describing the error type
+ */
+const char *cx_strerr (cx_status_t cx_st);
 
 #endif /*__CXML_API_H*/

@@ -11,6 +11,45 @@
 #define cx_com_dbg(...)
 #endif
 
+/*NOTE: Refer/Update according to cx_status_t definition!*/
+const char *cx_ErrStr[] = {
+	"Success",
+
+	/*Buffer/Pointer errors*/
+	"Encoder Overflow",
+	"Decoder Overflow",
+	"Memory Allocation",
+	"Null Pointer",
+
+	/*Node errors*/
+	"Invalid new Node type",
+	"Invalid Node",
+	"Invalid Root Node",
+	"Node Name Null Pointer",
+	"Root Node is Single or Infertile",
+	"Node Not Found",
+	"Root Node already filled",
+	"Node is hard to link - link-to node is way old",
+	"Unable to overwrite next-node",
+
+	/*Attr errors*/
+	"Invalid Attr Type",
+	"Attr Name Null Pointer",
+	"Attr Value Null Pointer",
+
+	/*Tag errors*/
+	"Invalid Tag",
+	"Tag is neither parent nor child!",
+	"Tag is not properly closed",
+	"Closed Tag doesn't have expected tag-name",
+
+	/*XML string wide errors*/
+	"Invalid/Corrupt XML string",
+
+	/*Unidentified errors*/
+	"Unknown failure",
+};
+
 /**
  * @func   : _cx_strndup
  * @brief  : safely duplicate a source string using length limits specified
@@ -33,11 +72,9 @@ char *_cx_strndup (char *src, size_t maxLen, char *dName)
 
 		_cx_calloc (dest, dLen + 1); /*+1 for NULL char to end-string*/
 
-		if (dest)
+		if (dest) {
 			strncpy (dest, src, dLen);
-		else
-			printf ("%s: Allocating %s: %s\n", \
-					__func__, dName, strerror (errno));
+		}
 	}
 
 	return dest;
@@ -52,6 +89,7 @@ static void destroyAttrList (cxn_attr_t **list)
 		prev = cur;
 		_cx_free (cur->attrName);
 		_cx_free (cur->attrValue);
+		_cx_free (cur);
 	} while (NULL != (cur = prev->next));
 }
 #endif
@@ -117,12 +155,11 @@ cx_status_t cx_CreateSession (void **_cookie, char *name, char *uxs, uint32_t in
 	cx_status_t xStatus = CX_SUCCESS;
 	cx_cookie_t *cookie;
 
-	cx_null_lfail (_cookie);
-	cx_lfail ((initXmlLength >= CX_MAX_ENC_STR_SZ), \
-			CX_ERR_ENC_OVERFLOW, "Requested initXmlLength out of bounds!");
+	cx_null_rfail (_cookie);
+	cx_rfail ((initXmlLength >= CX_MAX_ENC_STR_SZ), CX_ERR_ENC_OVERFLOW);
 
 	_cx_calloc (cookie, sizeof (cx_cookie_t));
-	cx_null_lfail (cookie);
+	cx_alloc_lfail (cookie);
 
 	cookie->cxCode = CX_COOKIE_MAGIC;
 	strncpy (cookie->name, name ? name : "unknown", CX_COOKIE_NAMELEN);
@@ -162,3 +199,13 @@ void cx_DestroySession (void *_cookie)
 		_cx_free (cookie);
 	}
 }
+
+const char *cx_strerr (cx_status_t cx_st)
+{
+	if ((cx_st >= 0) && (cx_st <= CX_FAILURE)) {
+		return cx_ErrStr[cx_st];
+	}
+
+	return "BAD CX STATUS!";
+}
+
