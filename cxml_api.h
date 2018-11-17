@@ -33,6 +33,7 @@ typedef enum {
 	CX_ERR_INVALID_ATTR,
 	CX_ERR_NULL_ATTRNAME,
 	CX_ERR_NULL_ATTRVALUE,
+	CX_ERR_ATTR_NOT_FOUND,
 
 	/*Tag errors*/
     CX_ERR_INVALID_TAG,
@@ -48,8 +49,7 @@ typedef enum {
 } cx_status_t;
 
 typedef enum {
-    CXN_MIN = 0,
-    CXN_PARENT,
+    CXN_PARENT = 0,
     CXN_SINGLE,
     CXN_COMMENT,
     CXN_INSTR,
@@ -415,5 +415,22 @@ void cx_DestroySession (void *_cookie);
  * @return : pointer to string describing the error type
  */
 const char *cx_strerr (cx_status_t cx_st);
+
+#if CX_USING_TAG_ATTR
+/**
+ * @func   : cx_GetAttrValue
+ * @brief  : returns a attribute value string for a
+ *           given attribute of a particular node
+ * @called : When a value of an attribute for a particular node
+ *           is required after a successful decoding
+ * @input  : void *_cookie - pointer to a valid xml-context
+ *           const char *tagName - name of the tag the attribute belongs to
+ *           const char *attrName - name of specific attribute
+ * @output : char *attrValue - pointer to buffer to hold attribute value
+ * @return : CX_SUCCESS on success
+ *           non-zero value indicating type of failure
+ */
+cx_status_t cx_GetAttrValue (void *_cookie, const char *tagName, const char *attrName, char *attrValue);
+#endif
 
 #endif /*__CXML_API_H*/

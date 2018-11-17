@@ -15,7 +15,7 @@
  * modifying enum for data types - cxattr_type_t;
  * ensure proper format specifiers while encoding different data in xml*/
 #define _cx_def_fmts_array(arr) \
-	char arr[CXATTR_MAX][4] = { \
+	const char arr[CXATTR_MAX][4] = { \
 		"%s",                   \
 		"%c",                   \
 		"%u",                   \
@@ -123,5 +123,7 @@ typedef struct cx_cookie_s {
 	do { if (ptr) { free (ptr); ptr = NULL; } } while (0)
 
 char *_cx_strndup (char *src, size_t maxLen, char *dName);
+
+cx_node_t *cx_FindNodeWithTag (void *_cookie, char *name);
 
 #endif /*__CXML_H*/

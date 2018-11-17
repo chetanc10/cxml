@@ -8,7 +8,7 @@
 #include "cxml_errchk.h"
 
 #define IS_NODE_TYPE_VALID(nodeType) \
-	((nodeType > CXN_MIN) && (nodeType < CXN_MAX))
+	((nodeType >= CXN_PARENT) && (nodeType < CXN_MAX))
 
 #define IS_INVALID_NODE_TYPE(type) (!IS_NODE_TYPE_VALID(type))
 
@@ -16,11 +16,10 @@
 	((node->nodeType != CXN_SINGLE) || !(node->children))
 
 #if CX_USING_TAG_ATTR
-#define IS_HAVING_ATTR(node) (node->numOfAttr && node->attrList)
-#endif
 
-#if CX_USING_TAG_ATTR
-static void putNodeAttr (cx_node_t *xmlNode, char **encPtr)
+#define IS_HAVING_ATTR(node) (node->numOfAttr && node->attrList)
+
+static void _cx_PutNodeAttr (cx_node_t *xmlNode, char **encPtr)
 { /*Remove numOfAttr and add last pointer -TODO*/
 	uint8_t n = xmlNode->numOfAttr;
 	cxn_attr_t *attrListPtr = xmlNode->attrList;
@@ -31,6 +30,7 @@ static void putNodeAttr (cx_node_t *xmlNode, char **encPtr)
 		cx_enc_dbg ("attr::\n\r%s\n\r", *encPtr);
 	}
 }
+
 #endif
 
 static void _xml_verstring (char **encPtr)
@@ -40,89 +40,70 @@ static void _xml_verstring (char **encPtr)
 
 static cx_status_t cx_BuildXmlString (cx_cookie_t *cookie)
 {
+	/* _cxe_fmt Locked in correspondence with cxn_type_t,
+	 * _cxe_fmt[0] contains beginning of node data
+	 * _cxe_fmt[1] contains the end! */
+	const char *_cxe_fmt[2][CXN_MAX] = {
+		[0] = {
+			[CXN_PARENT]    = "<%s",
+			[CXN_SINGLE]    = "<%s",
+			[CXN_COMMENT]   = "<!--%s",
+			[CXN_INSTR]     = "<?%s?>",
+			[CXN_CDATA]     = "<![CDATA[",
+			[CXN_CONTENT]   = "%s",
+		},
+		[1] = {
+			[CXN_PARENT]    = ">",
+			[CXN_SINGLE]    = "/>",
+			[CXN_COMMENT]   = "-->",
+			[CXN_INSTR]     = "?>",
+			[CXN_CDATA]     = "]]>",
+			[CXN_CONTENT]   = "",
+		},
+	};
 	cx_node_t *curNode = cookie->root;
 	char *encPtr = cookie->xs;
 
 	_xml_verstring (&encPtr);
 
-NEW_NODE:
-	if (curNode->nodeType != CXN_CONTENT) {
-		encPtr += sprintf (encPtr, "<");
-	}
+	while (1) {
+		encPtr += sprintf (encPtr, \
+				_cxe_fmt[0][curNode->nodeType], curNode->tagField);
 
-	switch (curNode->nodeType) {
-#if CX_USING_COMMENTS
-		case CXN_COMMENT: encPtr += sprintf (encPtr, "!--"); break;
-#endif
-#if CX_USING_CDATA
-		case CXN_CDATA: encPtr += sprintf (encPtr, "![CDATA["); break;
-#endif
-#if CX_USING_INSTR
-		case CXN_INSTR: encPtr += sprintf (encPtr, "?"); break;
-#endif
-		default: break;
-	}
-
-	encPtr += sprintf (encPtr, "%s", curNode->tagField);
-	cx_enc_dbg ("1:\n\r%s\n\r", encPtr);
-
-	switch (curNode->nodeType) {
-		case CXN_SINGLE:
-		case CXN_PARENT:
 #if CX_USING_TAG_ATTR
-			if (IS_HAVING_ATTR(curNode)) {
-				putNodeAttr (curNode, &encPtr);
-			}
+		if (IS_HAVING_ATTR (curNode)) {
+			_cx_PutNodeAttr (curNode, &encPtr);
+		}
 #endif
-			encPtr += sprintf (encPtr, \
-					(curNode->nodeType == CXN_SINGLE)?"/>":">");
-			break;
-#if CX_USING_COMMENTS
-		case CXN_COMMENT:
-			encPtr += sprintf (encPtr, "-->");
-			break;
-#endif
-#if CX_USING_CDATA
-		case CXN_CDATA:
-			encPtr += sprintf (encPtr, "]]>");
-			break;
-#endif
-#if CX_USING_INSTR
-		case CXN_INSTR:
-			encPtr += sprintf (encPtr, "?>");
-			break;
-#endif
-		default:
-			break;
-	}
 
-	cx_enc_dbg ("2:\n\r%s\n\r", cookie->xs);
+		strcat (encPtr, _cxe_fmt[1][curNode->nodeType]);
+		encPtr += strlen (_cxe_fmt[1][curNode->nodeType]);
 
-	cx_rfail (((encPtr - cookie->xs) > CX_MAX_ENC_STR_SZ), \
-			CX_ERR_ENC_OVERFLOW);
+		cx_enc_dbg ("++\n\r%s\n\r..", cookie->xs);
 
-	if (curNode->children) {
-		curNode = curNode->children;
-		goto NEW_NODE;
-	}
+		cx_rfail (((encPtr - cookie->xs) > CX_MAX_ENC_STR_SZ), \
+				CX_ERR_ENC_OVERFLOW);
+
+		if (curNode->children) {
+			curNode = curNode->children;
+			continue;
+		}
 
 NEXT_NODE:
-	if (curNode->next) {
 		if (curNode->nodeType == CXN_PARENT) {
 			encPtr += sprintf (encPtr, "</%s>", curNode->tagField);
+			cx_enc_dbg ("+++\n\r%s\n\r...", cookie->xs);
+			cx_rfail (((encPtr - cookie->xs) > CX_MAX_ENC_STR_SZ), \
+					CX_ERR_ENC_OVERFLOW);
 		}
-		curNode = curNode->next;
-		cx_enc_dbg ("3:\n\r%s\n\r", cookie->xs);
-		goto NEW_NODE;
-	} else {
-		if (curNode->nodeType == CXN_PARENT) {
-			encPtr += sprintf (encPtr, "</%s>", curNode->tagField);
-			cx_enc_dbg ("4:\n\r%s\n\r", cookie->xs);
-		}
-		if (curNode->parent) {
+		if (curNode->next) {
+			curNode = curNode->next;
+		} else if (curNode->parent) {
 			curNode = curNode->parent;
 			cx_enc_dbg ("back to: %s\n\r", curNode->tagField);
 			goto NEXT_NODE;
+		} else {
+			break;
 		}
 	}
 
@@ -156,44 +137,6 @@ cx_status_t cx_EncPkt (void *_cookie, char **xmlData)
 	cx_enc_dbg ("PACKET: \n%s\n", cookie->xs);
 
 	return xStatus;
-}
-
-/**
- * @func   : cx_FindNodeWithTag
- * @brief  : use an input tag string to find node that contains that tag
- * @called : when a tagged node is needed to process/update status,etc
- * @input  : void *_cookie - pointer to select xml-context
- *           char *name - name of the tag for required node
- * @output : none
- * @return : NULL - if no match found
- *           !NULL - if node with specified tag is found
- */
-cx_node_t *cx_FindNodeWithTag (void *_cookie, char *name)
-{
-	cx_cookie_t *cookie = (cx_cookie_t *)_cookie;
-	cx_node_t *curNode = cookie->root;
-
-	if (!curNode) {
-		cx_enc_dbg ("Can't have NULL to start with!");
-		return (cx_node_t *)NULL;
-	}
-
-	while (curNode) {
- 	    cx_enc_dbg ("check %s\n", curNode->tagField);
-		if (!strcmp (name, curNode->tagField))
-			break;
-		if (curNode->children) {
-			curNode = curNode->children;
-		} else { /*try list of children*/
-			/*If no more children, goto next node of parent, 
-			 *since parent is already checked*/
-			curNode = (curNode->next)?curNode->next:curNode->parent->next;
-		}
-	}
-
- 	cx_enc_dbg ("findNode: %s %s\r\n", name, curNode?"success":"failed");
-
-	return curNode;
 }
 
 #if CX_USING_TAG_ATTR

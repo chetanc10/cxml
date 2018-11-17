@@ -36,6 +36,7 @@ const char *cx_ErrStr[] = {
 	"Invalid Attr Type",
 	"Attr Name Null Pointer",
 	"Attr Value Null Pointer",
+	"Attr Not Found"
 
 	/*Tag errors*/
 	"Invalid Tag",
@@ -91,6 +92,69 @@ static void destroyAttrList (cxn_attr_t **list)
 		_cx_free (cur->attrValue);
 		_cx_free (cur);
 	} while (NULL != (cur = prev->next));
+}
+#endif
+
+/**
+ * @func   : cx_FindNodeWithTag
+ * @brief  : use an input tag string to find node that contains that tag
+ * @called : when a tagged node is needed to process/update status,etc
+ * @input  : void *_cookie - pointer to select xml-context
+ *           char *name - name of the tag for required node
+ * @output : none
+ * @return : NULL - if no match found
+ *           !NULL - if node with specified tag is found
+ */
+cx_node_t *cx_FindNodeWithTag (void *_cookie, char *name)
+{
+	cx_cookie_t *cookie = (cx_cookie_t *)_cookie;
+	cx_node_t *curNode = cookie->root;
+
+	if (!curNode) {
+		cx_com_dbg ("Can't have NULL to start with!");
+		return (cx_node_t *)NULL;
+	}
+
+	while (curNode) {
+ 	    cx_com_dbg ("check %s\n", curNode->tagField);
+		if (!strcmp (name, curNode->tagField))
+			break;
+		if (curNode->children) {
+			curNode = curNode->children;
+		} else { /*try list of children*/
+			/*If no more children, goto next node of parent, 
+			 *since parent is already checked*/
+			curNode = (curNode->next)?curNode->next:curNode->parent->next;
+		}
+	}
+
+ 	cx_com_dbg ("findNode: %s %s\r\n", name, curNode?"success":"failed");
+
+	return curNode;
+}
+
+#if CX_USING_TAG_ATTR
+cx_status_t cx_GetAttrValue (void *_cookie, const char *tagName, const char *attrName, char *attrValue)
+{
+	cx_cookie_t *cookie = (cx_cookie_t *)_cookie;
+	cx_node_t *tagNode = cookie->root;
+	cxn_attr_t *attr;
+
+	cx_null_rfail (tagName);
+	cx_null_rfail (attrName);
+	cx_null_rfail (attrValue);
+
+	tagNode = cx_FindNodeWithTag (cookie, (char *)tagName);
+	cx_rfail (!tagNode, CX_ERR_NODE_NOT_FOUND);
+
+	for (attr = tagNode->attrList; attr; attr = attr->next) {
+		if (!strcmp (attr->attrName, attrName)) {
+			strcpy (attrValue, attr->attrValue);
+			return CX_SUCCESS;
+		}
+	}
+
+	return CX_ERR_ATTR_NOT_FOUND;
 }
 #endif
 

@@ -174,7 +174,6 @@ static cx_status_t getNodeFromNewTag (cx_node_t *prevNode, cx_node_t **curNode, 
 			break;
 		case CXN_SINGLE: /*we won't have this ever, but have fail-safe*/
 			break;
-		case CXN_MIN:
 		case CXN_MAX:
 		default:
 			cx_dec_dbg ("Invalid tag type!");

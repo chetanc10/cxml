@@ -60,7 +60,7 @@
 #define cxa_rfail(failed, errCode, errStr) \
 	do { \
 		if (failed) { \
-			cxa_perr (errStr); return errCode; \
+			cxa_perr ("ERR: "errStr); return errCode; \
 		} \
 	} while (0)
 
@@ -70,7 +70,7 @@
 #define cxa_lfail(failed, retVar, errCode, errStr) \
 	do { \
 		if (failed) { \
-			cxa_perr (errStr); retVar = errCode; goto CXA_ERR_LBL; \
+			cxa_perr ("ERR: "errStr); retVar = errCode; goto CXA_ERR_LBL; \
 		} \
 	} while (0)
 

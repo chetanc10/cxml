@@ -42,7 +42,7 @@ int encode_data_in_xml (void)
 
 	cxa_func_lfail (cx_EncPkt (encCookie, NULL), ret, -111, "Encoding failed");
 
-	printf ("Encoded xml packet:\n%s\n", ptr_xmlBuf);
+	printf ("SUCCESS!!!! Encoded xml packet:\n%s\n", ptr_xmlBuf);
 
 CXA_ERR_LBL:
 	if (xStatus != CX_SUCCESS) {
